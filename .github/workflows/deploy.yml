@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # or master, depending on your default branch
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: data-explorer/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./data-explorer
+        run: npm ci
+      
+      - name: Build app
+        working-directory: ./data-explorer
+        env:
+          REACT_APP_AIRTABLE_API_KEY: ${{ secrets.REACT_APP_AIRTABLE_API_KEY }}
+          REACT_APP_AIRTABLE_BASE_ID: ${{ secrets.REACT_APP_AIRTABLE_BASE_ID }}
+          REACT_APP_AIRTABLE_TABLE_NAME_SurveyResponses: ${{ secrets.REACT_APP_AIRTABLE_TABLE_NAME_SURVEYRESPONSES }}
+          REACT_APP_AIRTABLE_TABLE_NAME_Comments: ${{ secrets.REACT_APP_AIRTABLE_TABLE_NAME_COMMENTS }}
+          REACT_APP_AIRTABLE_TABLE_NAME_Tags: ${{ secrets.REACT_APP_AIRTABLE_TABLE_NAME_TAGS }}
+          REACT_APP_AIRTABLE_TABLE_NAME_Departments: ${{ secrets.REACT_APP_AIRTABLE_TABLE_NAME_DEPARTMENTS }}
+          REACT_APP_AIRTABLE_TABLE_NAME_Questions: ${{ secrets.REACT_APP_AIRTABLE_TABLE_NAME_QUESTIONS }}
+          REACT_APP_AIRTABLE_TABLE_NAME_Insight: ${{ secrets.REACT_APP_AIRTABLE_TABLE_NAME_INSIGHT }}
+          REACT_APP_ACCESS_PASSWORD: ${{ secrets.REACT_APP_ACCESS_PASSWORD }}
+        run: npm run build
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './data-explorer/build'
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+
