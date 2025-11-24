@@ -1,8 +1,6 @@
-import React, { useRef } from 'react';
-import html2canvas from 'html2canvas';
+import React from 'react';
 
-function Heatmap({ filteredData, onSnapshot, questions }) {
-  const heatmapRef = useRef(null);
+function Heatmap({ filteredData, onCreatePointer, questions }) {
   
   // Calculate heatmap data using questions config
   const calculateHeatmapData = () => {
@@ -82,28 +80,9 @@ function Heatmap({ filteredData, onSnapshot, questions }) {
     return `rgb(${value}, ${value}, ${value})`;
   };
 
-  const handleSnapshot = async () => {
-    if (!heatmapRef.current) return;
-    
-    try {
-      const canvas = await html2canvas(heatmapRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2 // Higher quality
-      });
-      
-      const imageData = canvas.toDataURL('image/png');
-      const timestamp = new Date().toLocaleString();
-      
-      if (onSnapshot) {
-        onSnapshot({
-          type: 'heatmap',
-          title: 'Issue Rating Frequency Heatmap',
-          imageData,
-          timestamp
-        });
-      }
-    } catch (error) {
-      console.error('Error capturing snapshot:', error);
+  const handleCreatePointer = () => {
+    if (onCreatePointer) {
+      return onCreatePointer('heatmap');
     }
   };
 
@@ -114,12 +93,12 @@ function Heatmap({ filteredData, onSnapshot, questions }) {
           <h3 className="section-title">Issue Rating Frequency</h3>
           <p className="section-description">Distribution of importance ratings (1-3) across all issues</p>
         </div>
-        <button className="snapshot-button" onClick={handleSnapshot} title="Add snapshot to insight">
-          📷 Snapshot
+        <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
+          🔗 Create Pointer
         </button>
       </div>
       
-      <div className="heatmap" ref={heatmapRef}>
+      <div className="heatmap">
         <div className="heatmap-grid">
           {/* Header row */}
           <div className="heatmap-cell header-cell"></div>

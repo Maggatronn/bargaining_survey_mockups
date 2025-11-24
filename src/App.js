@@ -20,9 +20,13 @@ function App() {
   const [departmentMap, setDepartmentMap] = useState({});
   const [insights, setInsights] = useState([]);
   const [questions, setQuestions] = useState([]);
-  const [pendingSnapshot, setPendingSnapshot] = useState(null);
+  const [activeTab, setActiveTab] = useState('heatmap'); // Track active tab for pointers
+  const [selectedInsightFilter, setSelectedInsightFilter] = useState('All'); // Track insight filter for pointers
+  const [contractPage, setContractPage] = useState(1); // Track current contract page
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
   const [isDragging, setIsDragging] = useState(false);
+  const [sensemakers, setSensemakers] = useState([]);
+  const [currentSensemaker, setCurrentSensemaker] = useState(null);
 
   // Check if already authenticated in this session
   useEffect(() => {
@@ -77,6 +81,37 @@ function App() {
             function done(err) {
               if (err) reject(err);
               else resolve({ depts, deptMap });
+            }
+          );
+      });
+    };
+
+    // Fetch Sensemakers table
+    const fetchSensemakers = () => {
+      return new Promise((resolve, reject) => {
+        const sensemakersTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_Sensemakers;
+        
+        if (!sensemakersTable) {
+          resolve([]);
+          return;
+        }
+        
+        const sensemakersList = [];
+        base(sensemakersTable)
+          .select()
+          .eachPage(
+            function page(records, fetchNextPage) {
+              records.forEach(record => {
+                sensemakersList.push({
+                  id: record.id,
+                  name: record.fields['Full Name']|| 'Unknown'
+                });
+              });
+              fetchNextPage();
+            },
+            function done(err) {
+              if (err) reject(err);
+              else resolve(sensemakersList);
             }
           );
       });
@@ -168,14 +203,30 @@ function App() {
     };
 
     // Fetch all data
-    Promise.all([fetchTags(), fetchComments(), fetchSurveyResponses(), fetchDepartments()])
-      .then(([tags, comments, surveyResponses, { depts, deptMap }]) => {
+    Promise.all([fetchTags(), fetchComments(), fetchSurveyResponses(), fetchDepartments(), fetchSensemakers()])
+      .then(([tags, comments, surveyResponses, { depts, deptMap }, sensemakersList]) => {
         setTagRecordIds(tags);
         setCommentsRecords(comments);
         setData(surveyResponses);
         setFilteredData(surveyResponses);
         setDepartments(depts);
         setDepartmentMap(deptMap);
+        setSensemakers(sensemakersList);
+        
+        // Set first sensemaker as default if available
+        if (sensemakersList.length > 0) {
+          const savedSensemaker = sessionStorage.getItem('currentSensemaker');
+          if (savedSensemaker) {
+            const sensemaker = sensemakersList.find(s => s.id === savedSensemaker);
+            if (sensemaker) {
+              setCurrentSensemaker(sensemaker);
+            } else {
+              setCurrentSensemaker(sensemakersList[0]);
+            }
+          } else {
+            setCurrentSensemaker(sensemakersList[0]);
+          }
+        }
         
         // Initialize annotations from existing tags (now supports multiple tags)
         const initialAnnotations = {};
@@ -267,10 +318,52 @@ function App() {
     }
   }, []);
 
-  const handleSnapshot = useCallback((snapshotData) => {
-    // Store the snapshot and notify the user
-    setPendingSnapshot(snapshotData);
-    console.log('Snapshot captured:', snapshotData.title);
+  // Create a pointer to the current view state
+  const [pendingPointer, setPendingPointer] = useState(null);
+  
+  const handleCreatePointer = useCallback((type, pageNumber) => {
+    const pointer = {
+      type, // 'heatmap', 'comments', 'priorities', 'stipend', or 'contract'
+      tab: activeTab,
+      department: selectedDepartment,
+      searchTerm: searchTerm,
+      insightFilter: selectedInsightFilter,
+      timestamp: new Date().toLocaleString(),
+      pointerData: {
+        type,
+        tab: activeTab,
+        department: selectedDepartment,
+        searchTerm,
+        insightFilter: selectedInsightFilter,
+        pageNumber: pageNumber // For contract pointers
+      }
+    };
+    setPendingPointer(pointer);
+    alert('Pointer created! Now edit an insight to add this view.');
+  }, [activeTab, selectedDepartment, searchTerm, selectedInsightFilter]);
+
+  // Navigate to a view based on a pointer
+  const handleNavigateToPointer = useCallback((pointer) => {
+    if (!pointer) return;
+    
+    // Set the tab
+    setActiveTab(pointer.tab || pointer.type);
+    
+    // Apply filters
+    if (pointer.department) {
+      setSelectedDepartment(pointer.department);
+    }
+    if (pointer.searchTerm) {
+      setSearchTerm(pointer.searchTerm);
+    }
+    if (pointer.insightFilter) {
+      setSelectedInsightFilter(pointer.insightFilter);
+    }
+    
+    // For contract pointers, jump to the page
+    if (pointer.type === 'contract' && pointer.pageNumber) {
+      setContractPage(pointer.pageNumber);
+    }
   }, []);
 
   useEffect(() => {
@@ -319,7 +412,6 @@ function App() {
           });
 
         setQuestions(records);
-        console.log('Questions loaded:', records);
       } catch (error) {
         console.error('Error fetching questions:', error);
       }
@@ -469,8 +561,12 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
+        <div className="header-content">
+          <div>
         <h1>GSU Organizers Data Explorer</h1>
         <p className="subtitle">Explore and analyze organizer data</p>
+          </div>
+            </div>
       </header>
 
       <SearchAndFilters
@@ -479,6 +575,9 @@ function App() {
         selectedDepartment={selectedDepartment}
         setSelectedDepartment={setSelectedDepartment}
         departments={departmentFilterOptions}
+        sensemakers={sensemakers}
+        currentSensemaker={currentSensemaker}
+        setCurrentSensemaker={setCurrentSensemaker}
       />
 
       <div className="panels-container">
@@ -487,18 +586,19 @@ function App() {
             data={data} 
             commentsRecords={commentsRecords} 
             annotations={annotations}
-            pendingSnapshot={pendingSnapshot}
-            onSnapshotUsed={() => setPendingSnapshot(null)}
+            onNavigateToPointer={handleNavigateToPointer}
+            pendingPointer={pendingPointer}
+            onPointerUsed={() => setPendingPointer(null)}
           />
-        </div>
+          </div>
 
         <div 
           className="panel-divider" 
           onMouseDown={handleMouseDown}
         >
           <div className="divider-handle"></div>
-        </div>
-
+                </div>
+                
         <div className="right-panel" style={{ width: `${100 - leftPanelWidth}%` }}>
           <DataExplorerPanel 
             filteredData={filteredData}
@@ -508,10 +608,17 @@ function App() {
             departmentMap={departmentMap}
             insights={insights}
             commentsRecords={commentsRecords}
-            onSnapshot={handleSnapshot}
+            onCreatePointer={handleCreatePointer}
             questions={questions}
             selectedDepartment={selectedDepartment}
             searchTerm={searchTerm}
+            currentSensemaker={currentSensemaker}
+            sensemakers={sensemakers}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedInsightFilter={selectedInsightFilter}
+            setSelectedInsightFilter={setSelectedInsightFilter}
+            contractPage={contractPage}
           />
         </div>
       </div>

@@ -1,8 +1,6 @@
-import React, { useRef } from 'react';
-import html2canvas from 'html2canvas';
+import React from 'react';
 
-function Stipend({ filteredData, onSnapshot }) {
-  const stipendRef = useRef(null);
+function Stipend({ filteredData, onCreatePointer }) {
   // Parse and count housing costs
   const getStipendData = () => {
     const costCounts = {};
@@ -38,28 +36,9 @@ function Stipend({ filteredData, onSnapshot }) {
   const stipendData = getStipendData();
   const maxCount = stipendData.length > 0 ? Math.max(...stipendData.map(d => d.count)) : 0;
 
-  const handleSnapshot = async () => {
-    if (!stipendRef.current) return;
-    
-    try {
-      const canvas = await html2canvas(stipendRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2
-      });
-      
-      const imageData = canvas.toDataURL('image/png');
-      const timestamp = new Date().toLocaleString();
-      
-      if (onSnapshot) {
-        onSnapshot({
-          type: 'stipend',
-          title: 'Housing Cost Stipend Histogram',
-          imageData,
-          timestamp
-        });
-      }
-    } catch (error) {
-      console.error('Error capturing snapshot:', error);
+  const handleCreatePointer = () => {
+    if (onCreatePointer) {
+      return onCreatePointer('stipend');
     }
   };
 
@@ -70,12 +49,12 @@ function Stipend({ filteredData, onSnapshot }) {
           <h3 className="section-title">Housing Cost Stipend</h3>
           <p className="section-description">Distribution of housing costs from lowest to highest</p>
         </div>
-        <button className="snapshot-button" onClick={handleSnapshot} title="Add snapshot to insight">
-          📷 Snapshot
+        <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
+          🔗 Create Pointer
         </button>
       </div>
       
-      <div className="stipend-content" ref={stipendRef}>
+      <div className="stipend-content">
         {stipendData.length === 0 ? (
           <div className="no-results">
             <p>No housing cost data available for the selected filters.</p>

@@ -1,36 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import Airtable from 'airtable';
 
-function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, onSnapshotUsed }) {
+function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer, pendingPointer, onPointerUsed }) {
   const [insights, setInsights] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [sensemakers, setSensemakers] = useState([]);
+  const [pointersData, setPointersData] = useState({});
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [newInsightTitle, setNewInsightTitle] = useState('');
   const [newInsightText, setNewInsightText] = useState('');
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [selectedComments, setSelectedComments] = useState([]);
-  const [selectedSnapshots, setSelectedSnapshots] = useState([]);
+  const [selectedPointers, setSelectedPointers] = useState([]);
+  const [selectedSensemakers, setSelectedSensemakers] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedComments, setExpandedComments] = useState({});
   const [expandedInsightComments, setExpandedInsightComments] = useState({});
   const [hoveredCitation, setHoveredCitation] = useState(null);
   const [expandedCitations, setExpandedCitations] = useState({});
+  const [collapsedDepartments, setCollapsedDepartments] = useState({});
+  const [collapsedCommentBank, setCollapsedCommentBank] = useState({});
+  const [showDepartmentSelector, setShowDepartmentSelector] = useState(false);
+  const [pointerTitles, setPointerTitles] = useState({});
+  const [pointerDescriptions, setPointerDescriptions] = useState({});
 
   useEffect(() => {
     fetchDepartments();
+    fetchSensemakers();
     fetchInsights();
   }, []);
 
-  // Handle pending snapshot
+  // Handle pending pointer
   useEffect(() => {
-    if (pendingSnapshot && (isAdding || editingId)) {
-      // Add snapshot to current insight being edited
-      setSelectedSnapshots(prev => [...prev, pendingSnapshot]);
-      if (onSnapshotUsed) onSnapshotUsed();
+    if (pendingPointer && (isAdding || editingId)) {
+      // Add pointer to current insight being edited
+      setSelectedPointers(prev => [...prev, pendingPointer]);
+      if (onPointerUsed) onPointerUsed();
     }
-  }, [pendingSnapshot, isAdding, editingId, onSnapshotUsed]);
+  }, [pendingPointer, isAdding, editingId, onPointerUsed]);
 
   const fetchDepartments = async () => {
     const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
@@ -65,6 +74,39 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     }
   };
 
+  const fetchSensemakers = async () => {
+    const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
+    const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
+    const sensemakersTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_Sensemakers;
+
+    if (!apiKey || !baseId || !sensemakersTable) {
+      console.error('Missing Airtable configuration for Sensemakers');
+      return;
+    }
+
+    const base = new Airtable({ apiKey }).base(baseId);
+
+    try {
+      const records = [];
+      await base(sensemakersTable)
+        .select()
+        .eachPage((pageRecords, fetchNextPage) => {
+          pageRecords.forEach(record => {
+            const sensemakerName = record.fields['Full Name'] || 'Unknown';
+            records.push({
+              id: record.id,
+              name: sensemakerName
+            });
+          });
+          fetchNextPage();
+        });
+      
+      setSensemakers(records);
+    } catch (err) {
+      console.error('Error fetching sensemakers:', err);
+    }
+  };
+
   const fetchInsights = async () => {
     const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
     const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
@@ -86,24 +128,83 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
         })
         .eachPage((pageRecords, fetchNextPage) => {
           pageRecords.forEach(record => {
+            let pointerIds = [];
+            const pointersField = record.fields.Pointers;
+            
+            if (Array.isArray(pointersField)) {
+              pointerIds = pointersField;
+            }
+            
             records.push({
               id: record.id,
               name: record.fields.Name,
               title: record.fields.Title || '',
               notes: record.fields.Notes,
-              departments: record.fields.Departments || [],
-              comments: record.fields.Comments || [],
-              snapshots: record.fields.Snapshots ? JSON.parse(record.fields.Snapshots) : []
+              departments: Array.isArray(record.fields.Departments) ? record.fields.Departments : [],
+              comments: Array.isArray(record.fields.Comments) ? record.fields.Comments : [],
+              pointerIds: Array.isArray(pointerIds) ? pointerIds : [],
+              sensemakers: Array.isArray(record.fields.Sensemakers) ? record.fields.Sensemakers : []
             });
           });
           fetchNextPage();
         });
       
       setInsights(records);
+      
+      // Fetch pointer details for all linked pointers
+      const allPointerIds = [...new Set(records.flatMap(r => r.pointerIds || []))];
+      if (allPointerIds.length > 0) {
+        await fetchPointers(allPointerIds);
+      }
+      
       setLoading(false);
     } catch (err) {
       console.error('Error fetching insights:', err);
       setLoading(false);
+    }
+  };
+
+  const fetchPointers = async (pointerIds) => {
+    const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
+    const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
+    const pointersTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_Pointers;
+
+    if (!apiKey || !baseId || !pointersTable || pointerIds.length === 0) return;
+
+    const base = new Airtable({ apiKey }).base(baseId);
+
+    try {
+      const pointersMap = {};
+      
+      // Fetch pointers in batches
+      await base(pointersTable)
+        .select({
+          filterByFormula: `OR(${pointerIds.map(id => `RECORD_ID()='${id}'`).join(',')})`
+        })
+        .eachPage((pageRecords, fetchNextPage) => {
+          pageRecords.forEach(record => {
+            // Parse the JSON pointer data
+            let pointerData = {};
+            try {
+              pointerData = record.fields.Pointer ? JSON.parse(record.fields.Pointer) : {};
+            } catch (e) {
+              console.error('Error parsing pointer data:', e);
+            }
+            
+            pointersMap[record.id] = {
+              id: record.id,
+              title: record.fields.Title || 'Untitled View',
+              description: record.fields.Description || '',
+              pointerData: pointerData, // {type, tab, department, searchTerm, insightFilter}
+              timestamp: record.fields.Timestamp || record._rawJson?.createdTime
+            };
+          });
+          fetchNextPage();
+        });
+      
+      setPointersData(pointersMap);
+    } catch (err) {
+      console.error('Error fetching pointers:', err);
     }
   };
 
@@ -114,19 +215,36 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     setNewInsightText('');
     setSelectedDepartments([]);
     setSelectedComments([]);
-    setSelectedSnapshots([]);
+    setSelectedPointers([]);
+    setSelectedSensemakers([]);
   };
 
   const handleEdit = (insight) => {
-    console.log('Editing insight:', insight);
-    console.log('Insight departments:', insight.departments);
     setEditingId(insight.id);
     setNewInsightTitle(insight.title || '');
     setNewInsightText(insight.notes || '');
     // Ensure departments and comments are arrays of IDs
     setSelectedDepartments(Array.isArray(insight.departments) ? insight.departments : []);
     setSelectedComments(Array.isArray(insight.comments) ? insight.comments : []);
-    setSelectedSnapshots(Array.isArray(insight.snapshots) ? insight.snapshots : []);
+    
+    // Convert pointer IDs to full pointer objects
+    const pointerObjects = (insight.pointerIds || []).map(pointerId => {
+      const pointer = pointersData[pointerId];
+      if (pointer) {
+        return {
+          id: pointerId,
+          title: pointer.title,
+          description: pointer.description,
+          type: pointer.pointerData?.type || pointer.pointerData?.tab,
+          pointerData: pointer.pointerData,
+          timestamp: pointer.timestamp
+        };
+      }
+      return null;
+    }).filter(p => p !== null);
+    
+    setSelectedPointers(pointerObjects);
+    setSelectedSensemakers(Array.isArray(insight.sensemakers) ? insight.sensemakers : []);
     setIsAdding(false);
   };
 
@@ -137,7 +255,7 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     setNewInsightText('');
     setSelectedDepartments([]);
     setSelectedComments([]);
-    setSelectedSnapshots([]);
+    setSelectedPointers([]);
   };
   
   
@@ -147,6 +265,41 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     } else {
       setSelectedComments([...selectedComments, commentId]);
     }
+  };
+
+  const handleEditorDrop = (e) => {
+    // Only handle drops that aren't on the textarea
+    if (e.target.tagName === 'TEXTAREA') {
+      return; // Let handleTextareaDrop handle it
+    }
+    
+    e.preventDefault();
+    const commentUniqueId = e.dataTransfer.getData('commentId');
+    
+    if (!commentUniqueId) return;
+    
+    // Get the comment record ID
+    const commentEntry = Object.entries(commentsRecords).find(
+      ([uniqueId]) => uniqueId === commentUniqueId
+    );
+    
+    if (!commentEntry) return;
+    
+    const [, commentData] = commentEntry;
+    const recordId = commentData.recordId;
+    
+    // Add to selected comments if not already there (without inline citation)
+    if (!selectedComments.includes(recordId)) {
+      setSelectedComments([...selectedComments, recordId]);
+    }
+  };
+
+  const handleEditorDragOver = (e) => {
+    if (e.target.tagName === 'TEXTAREA') {
+      return; // Let textarea handle it
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
   };
 
   const handleDrop = async (insightId, e) => {
@@ -170,7 +323,6 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     
     // Check if comment is already linked
     if (insight.comments.includes(commentRecordId)) {
-      console.log('Comment already linked to this insight');
       return;
     }
     
@@ -200,8 +352,6 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
           ? { ...i, comments: updatedComments }
           : i
       ));
-      
-      console.log('Comment linked successfully!');
     } catch (err) {
       console.error('Error linking comment:', err);
     }
@@ -233,31 +383,68 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
 
   const handleTextareaDrop = (e) => {
     e.preventDefault();
+    
+    // Check if it's from the comment bank or from the right panel
+    const bankCommentId = e.dataTransfer.getData('bankCommentId');
     const commentUniqueId = e.dataTransfer.getData('commentId');
     
-    if (!commentUniqueId) return;
+    let recordId;
     
-    // Get the comment record ID
+    if (bankCommentId) {
+      // Dropped from comment bank - already have the record ID
+      recordId = bankCommentId;
+    } else if (commentUniqueId) {
+      // Dropped from right panel - need to get record ID
+      const commentEntry = Object.entries(commentsRecords).find(
+        ([uniqueId]) => uniqueId === commentUniqueId
+      );
+      
+      if (!commentEntry) return;
+      
+      const [, commentData] = commentEntry;
+      recordId = commentData.recordId;
+      
+      // Add to selected comments if not already there
+      if (!selectedComments.includes(recordId)) {
+        setSelectedComments([...selectedComments, recordId]);
+      }
+    } else {
+      return;
+    }
+    
+    // Get comment data for display
     const commentEntry = Object.entries(commentsRecords).find(
-      ([uniqueId]) => uniqueId === commentUniqueId
+      ([, comment]) => comment.recordId === recordId
     );
     
     if (!commentEntry) return;
     
-    const [, commentData] = commentEntry;
-    const recordId = commentData.recordId;
+    const [uniqueId, commentData] = commentEntry;
+    const commentText = commentData.fullText || '';
     
-    // Add to selected comments if not already there
-    if (!selectedComments.includes(recordId)) {
-      setSelectedComments([...selectedComments, recordId]);
-    }
+    // Get tags from annotations
+    const responseTags = (annotations && annotations[uniqueId]) || [];
+    const tagArray = Array.isArray(responseTags) 
+      ? responseTags.filter(t => t && t !== '') 
+      : (responseTags && responseTags !== '' ? [responseTags] : []);
+    const plusDeltaTag = tagArray.find(t => t === 'plus' || t === 'delta');
+    
+    // Truncate comment text to ~50 chars
+    const maxLength = 50;
+    const truncatedText = commentText.length > maxLength 
+      ? commentText.substring(0, maxLength) + '...' 
+      : commentText;
+    
+    // Format: [[display-text|recordId]] - display text first, ID hidden at end
+    const symbol = plusDeltaTag === 'plus' ? '➕' : plusDeltaTag === 'delta' ? '🔺' : '';
+    const displayText = symbol ? `${symbol} ${truncatedText}` : truncatedText;
+    const citation = `[[${displayText}|${recordId}]]`;
     
     // Insert citation at cursor position
     const textarea = e.target;
     const cursorPos = textarea.selectionStart;
     const textBefore = newInsightText.substring(0, cursorPos);
     const textAfter = newInsightText.substring(cursorPos);
-    const citation = `[[${recordId}]]`;
     
     setNewInsightText(textBefore + citation + textAfter);
     
@@ -395,18 +582,68 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     });
   };
 
+  // Get all cited comment IDs from text
+  const getCitedCommentIds = (text) => {
+    if (!text) return [];
+    const citationPattern = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
+    const citedIds = [];
+    let match;
+    while ((match = citationPattern.exec(text)) !== null) {
+      // If there's a pipe, the ID is in the second group (new format: [[displayText|recordId]])
+      // Otherwise it's in the first group (old format: [[recordId]])
+      const recordId = match[2] || match[1];
+      citedIds.push(recordId);
+    }
+    return citedIds;
+  };
+
+  // Remove a comment from an insight
+  const handleRemoveComment = async (insightId, commentRecordId) => {
+    const insight = insights.find(i => i.id === insightId);
+    if (!insight) return;
+
+    const updatedComments = insight.comments.filter(id => id !== commentRecordId);
+
+    // Update Airtable
+    const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
+    const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
+    const insightTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_Insight;
+
+    if (!apiKey || !baseId || !insightTable) return;
+
+    const base = new Airtable({ apiKey }).base(baseId);
+
+    try {
+      await base(insightTable).update(insightId, {
+        'Linked Comments': updatedComments
+      });
+
+      // Update local state
+      setInsights(insights.map(i => 
+        i.id === insightId 
+          ? { ...i, comments: updatedComments }
+          : i
+      ));
+    } catch (error) {
+      console.error('Error removing comment:', error);
+    }
+  };
+
   // Parse text and render inline citations
   const renderTextWithCitations = (text, insightComments) => {
     if (!text) return '';
     
-    // Find all [[record-id]] patterns
-    const citationPattern = /\[\[([^\]]+)\]\]/g;
+    // Find all [[display-text|record-id]] or [[record-id]] patterns
+    const citationPattern = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
     const parts = [];
     let lastIndex = 0;
     
     let match;
     while ((match = citationPattern.exec(text)) !== null) {
-      const recordId = match[1];
+      // New format: [[displayText|recordId]]
+      // Old format: [[recordId]]
+      const recordId = match[2] || match[1]; // If pipe exists, ID is second, else first
+      const displayText = match[2] ? match[1] : null; // If pipe exists, display is first
       
       // Add text before citation
       if (match.index > lastIndex) {
@@ -419,7 +656,8 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
       // Add citation
       parts.push({
         type: 'citation',
-        recordId: recordId
+        recordId: recordId,
+        displayText: displayText
       });
       
       lastIndex = match.index + match[0].length;
@@ -448,7 +686,8 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
         
         const [uniqueId, commentData] = commentEntry;
         const commentText = commentData.fullText || uniqueId.split(' | ')[0];
-        const issueColorClass = getIssueColorClass(uniqueId);
+        const questionId = commentData.question || '';
+        const issueColorClass = `issue-${questionId}`;
         
         // Get tags from annotations
         const responseTags = (annotations && annotations[uniqueId]) || [];
@@ -515,6 +754,28 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     const base = new Airtable({ apiKey }).base(baseId);
 
     try {
+      // Create pointer records for new pointers
+      const pointerRecordIds = [];
+      const pointersTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_Pointers;
+      
+      if (pointersTable && selectedPointers.length > 0) {
+        for (const pointer of selectedPointers) {
+          // Check if it's a new pointer (has pointerData) or existing (has id)
+          if (pointer.id) {
+            pointerRecordIds.push(pointer.id);
+          } else {
+            // Create the pointer record
+            const pointerRecord = await base(pointersTable).create({
+              Title: pointer.title || 'Untitled View',
+              Description: pointer.description || '',
+              Pointer: JSON.stringify(pointer.pointerData), // Store as JSON string
+              Timestamp: pointer.timestamp
+            });
+            pointerRecordIds.push(pointerRecord.id);
+          }
+        }
+      }
+      
       if (editingId) {
         // Update existing insight
         const updatedRecord = await base(insightTable).update(editingId, {
@@ -522,7 +783,8 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
           Notes: newInsightText.trim(),
           Departments: selectedDepartments,
           Comments: selectedComments,
-          Snapshots: JSON.stringify(selectedSnapshots)
+          Pointers: pointerRecordIds,
+          Sensemakers: selectedSensemakers
         });
 
         // Update local state
@@ -535,10 +797,16 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
                 notes: updatedRecord.fields.Notes,
                 departments: updatedRecord.fields.Departments || [],
                 comments: updatedRecord.fields.Comments || [],
-                snapshots: updatedRecord.fields.Snapshots ? JSON.parse(updatedRecord.fields.Snapshots) : []
+                pointerIds: updatedRecord.fields.Pointers || [],
+                sensemakers: updatedRecord.fields.Sensemakers || []
               }
             : insight
         ));
+        
+        // Fetch the new pointer details
+        if (pointerRecordIds.length > 0) {
+          await fetchPointers(pointerRecordIds);
+        }
       } else {
         // Create new insight
         const insightNumber = insights.length;
@@ -550,7 +818,8 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
           Notes: newInsightText.trim(),
           Departments: selectedDepartments,
           Comments: selectedComments,
-          Snapshots: JSON.stringify(selectedSnapshots)
+          Pointers: pointerRecordIds,
+          Sensemakers: selectedSensemakers
         });
 
         // Add to local state
@@ -561,8 +830,14 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
           notes: newRecord.fields.Notes,
           departments: newRecord.fields.Departments || [],
           comments: newRecord.fields.Comments || [],
-          snapshots: newRecord.fields.Snapshots ? JSON.parse(newRecord.fields.Snapshots) : []
+          pointerIds: newRecord.fields.Pointers || [],
+          sensemakers: newRecord.fields.Sensemakers || []
         }]);
+        
+        // Fetch the pointer details
+        if (pointerRecordIds.length > 0) {
+          await fetchPointers(pointerRecordIds);
+        }
       }
 
       // Reset form
@@ -572,7 +847,8 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
       setNewInsightText('');
       setSelectedDepartments([]);
       setSelectedComments([]);
-      setSelectedSnapshots([]);
+      setSelectedPointers([]);
+      setSelectedSensemakers([]);
       setIsSaving(false);
     } catch (err) {
       console.error('Error saving insight:', err);
@@ -605,7 +881,11 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
 
       <div className="insights-content">
         {(isAdding || editingId) && (
-          <div className="insight-editor">
+          <div 
+            className="insight-editor"
+            onDrop={handleEditorDrop}
+            onDragOver={handleEditorDragOver}
+          >
             <label className="editor-label">Title</label>
             <input
               type="text"
@@ -616,9 +896,109 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
               autoFocus
             />
             
+            <label className="editor-label">Departments</label>
+            <div className="department-list-display">
+              {selectedDepartments.length === 0 ? (
+                <p className="no-items-text">No departments selected</p>
+              ) : (
+                <div className="department-tags">
+                  {selectedDepartments.map(deptId => {
+                    const dept = departments.find(d => d.id === deptId);
+                    return dept ? (
+                      <span key={deptId} className="department-tag">
+                        {dept.name}
+                        <button
+                          className="remove-tag-button"
+                          onClick={() => setSelectedDepartments(selectedDepartments.filter(d => d !== deptId))}
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
+            <button
+              className="toggle-department-selector"
+              onClick={() => setShowDepartmentSelector(!showDepartmentSelector)}
+              type="button"
+            >
+              {showDepartmentSelector ? '− Hide Department Options' : '+ Add/Edit Departments'}
+            </button>
+            {showDepartmentSelector && (
+              <div className="department-clickable-list">
+                {departments.length === 0 ? (
+                  <p className="loading-text">Loading departments...</p>
+                ) : (
+                  departments.map(dept => (
+                    <div
+                      key={dept.id}
+                      className={`department-item ${selectedDepartments.includes(dept.id) ? 'selected' : ''}`}
+                      onClick={() => {
+                        if (selectedDepartments.includes(dept.id)) {
+                          setSelectedDepartments(selectedDepartments.filter(d => d !== dept.id));
+                        } else {
+                          setSelectedDepartments([...selectedDepartments, dept.id]);
+                        }
+                      }}
+                    >
+                      <span className="department-checkbox">
+                        {selectedDepartments.includes(dept.id) ? '✓' : ''}
+                      </span>
+                      <span className="department-name">{dept.name}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+            
+            <label className="editor-label">Sensemakers</label>
+            <div className="sensemaker-list-display">
+              {selectedSensemakers.length === 0 ? (
+                <p className="no-items-text">No sensemakers selected</p>
+              ) : (
+                <div className="sensemaker-tags">
+                  {selectedSensemakers.map(smId => {
+                    const sm = sensemakers.find(s => s.id === smId);
+                    return sm ? (
+                      <span key={smId} className="sensemaker-tag">
+                        {sm.name}
+                        <button
+                          className="remove-tag-button"
+                          onClick={() => setSelectedSensemakers(selectedSensemakers.filter(s => s !== smId))}
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="sensemaker-selector-compact">
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value && !selectedSensemakers.includes(e.target.value)) {
+                    setSelectedSensemakers([...selectedSensemakers, e.target.value]);
+                  }
+                }}
+              >
+                <option value="">+ Add Sensemaker</option>
+                {sensemakers.map(sm => (
+                  <option key={sm.id} value={sm.id} disabled={selectedSensemakers.includes(sm.id)}>
+                    {sm.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
             <label className="editor-label">
               Insight Text
-              <span className="editor-hint">💡 Drag comments from the right panel to cite them inline</span>
+              <span className="editor-hint">💡 Drag comments into the text box to cite them inline</span>
             </label>
             <textarea
               className="insight-textarea"
@@ -629,60 +1009,58 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
               onDragOver={handleTextareaDragOver}
               rows={6}
             />
-            {newInsightText && newInsightText.includes('[[') && (
-              <div className="insight-text-preview">
-                <div className="preview-label">Preview:</div>
-                <div className="preview-content">
-                  {renderTextareaContent(newInsightText)}
-                </div>
-              </div>
-            )}
-            
-            <label className="editor-label">Link to Departments</label>
-            <select
-              multiple
-              className="department-multiselect"
-              value={selectedDepartments}
-              onChange={(e) => {
-                const options = Array.from(e.target.selectedOptions);
-                const values = options.map(option => option.value);
-                setSelectedDepartments(values);
-              }}
-              size={Math.min(departments.length, 6)}
-            >
-              {departments.length === 0 ? (
-                <option disabled>Loading departments...</option>
-              ) : (
-                departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))
-              )}
-            </select>
-            <p className="editor-hint-small">Hold Cmd/Ctrl to select multiple departments</p>
-            
+            <div className="citation-hint">
+              💡 Drag comments into the text box to cite them. They appear as <span className="hint-citation">[[➕ Comment text...]]</span>
+            </div>
+
             {selectedComments.length > 0 && (
               <>
-                <label className="editor-label">Linked Comments ({selectedComments.length})</label>
-                <div className="linked-comments-preview">
+                <label className="editor-label">Comment Bank ({selectedComments.length})</label>
+                <div className="comment-bank-editor">
                   {selectedComments.map(commentId => {
-                    // Find the comment in commentsRecords
                     const commentEntry = Object.entries(commentsRecords).find(
                       ([, comment]) => comment.recordId === commentId
                     );
                     if (!commentEntry) return null;
                     
-                    const [uniqueId] = commentEntry;
-                    const commentText = uniqueId.split(' | ')[0];
+                    const [, commentData] = commentEntry;
+                    const commentText = commentData.fullText || '';
+                    const isExpanded = expandedComments[commentId];
+                    const isCited = getCitedCommentIds(newInsightText).includes(commentId);
                     
                     return (
-                      <div key={commentId} className="linked-comment-mini">
-                        <span className="comment-text-mini">{commentText}</span>
+                      <div 
+                        key={commentId} 
+                        className={`comment-bank-card ${isExpanded ? 'expanded' : ''} ${isCited ? 'cited' : ''}`}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('bankCommentId', commentId);
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        style={{ cursor: 'grab' }}
+                      >
+                        <div 
+                          className="comment-bank-text"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCommentExpansion(commentId);
+                          }}
+                        >
+                          {isCited && <span className="cited-indicator" title="Cited in summary">💬</span>}
+                          <div className="comment-text-content">
+                            "{commentText}"
+                          </div>
+                          {!isExpanded && (
+                            <div className="expand-indicator">...</div>
+                          )}
+                        </div>
                         <button
-                          className="remove-comment-button"
-                          onClick={() => toggleComment(commentId)}
-                          type="button"
+                          className="remove-bank-comment"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleComment(commentId);
+                          }}
+                          title="Remove from Comment Bank"
                         >
                           ×
                         </button>
@@ -692,22 +1070,68 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
                 </div>
               </>
             )}
-            <p className="drag-drop-hint">💡 Drag comment cards from the right panel to link them to this insight</p>
             
-            {selectedSnapshots.length > 0 && (
+            <p className="drag-drop-hint">💡 Drag comment cards here to add to comment bank, or into the text box to cite inline</p>
+            <p className="drag-drop-hint">🔗 Click "Create Pointer" in the Data Explorer to link to a specific view</p>
+            
+            {selectedPointers.length > 0 && (
               <>
-                <label className="editor-label">Snapshots ({selectedSnapshots.length})</label>
-                <div className="snapshots-preview">
-                  {selectedSnapshots.map((snapshot, index) => (
-                    <div key={index} className="snapshot-preview-card">
-                      <img src={snapshot.imageData} alt={snapshot.title} className="snapshot-preview-image" />
-                      <div className="snapshot-preview-info">
-                        <div className="snapshot-preview-title">{snapshot.title}</div>
-                        <div className="snapshot-preview-timestamp">{snapshot.timestamp}</div>
+                <label className="editor-label">View Pointers ({selectedPointers.length})</label>
+                <div className="pointers-preview">
+                  {selectedPointers.map((pointer, index) => (
+                    <div key={index} className="pointer-preview-card">
+                      <div className="pointer-preview-info">
+                        <input
+                          type="text"
+                          className="pointer-title-input"
+                          placeholder="Enter pointer title..."
+                          value={pointerTitles[`${index}-title`] !== undefined ? pointerTitles[`${index}-title`] : (pointer.title || '')}
+                          onChange={(e) => {
+                            setPointerTitles(prev => ({
+                              ...prev,
+                              [`${index}-title`]: e.target.value
+                            }));
+                            const updatedPointers = [...selectedPointers];
+                            updatedPointers[index] = {
+                              ...updatedPointers[index],
+                              title: e.target.value
+                            };
+                            setSelectedPointers(updatedPointers);
+                          }}
+                        />
+                        <textarea
+                          className="pointer-description-input"
+                          placeholder="Enter pointer description (optional)..."
+                          value={pointerDescriptions[`${index}-description`] !== undefined ? pointerDescriptions[`${index}-description`] : (pointer.description || '')}
+                          onChange={(e) => {
+                            setPointerDescriptions(prev => ({
+                              ...prev,
+                              [`${index}-description`]: e.target.value
+                            }));
+                            const updatedPointers = [...selectedPointers];
+                            updatedPointers[index] = {
+                              ...updatedPointers[index],
+                              description: e.target.value
+                            };
+                            setSelectedPointers(updatedPointers);
+                          }}
+                          rows={2}
+                        />
+                        <div className="pointer-preview-details">
+                          📊 {pointer.type ? (pointer.type.charAt(0).toUpperCase() + pointer.type.slice(1)) : 'View'}
+                          {pointer.pointerData?.department && pointer.pointerData.department !== 'All' && 
+                            ` • Dept: ${pointer.pointerData.department}`
+                          }
+                        </div>
                       </div>
                       <button
-                        className="remove-snapshot-button"
-                        onClick={() => setSelectedSnapshots(selectedSnapshots.filter((_, i) => i !== index))}
+                        className="remove-pointer-button"
+                        onClick={() => {
+                          setSelectedPointers(selectedPointers.filter((_, i) => i !== index));
+                          const newTitles = { ...pointerTitles };
+                          delete newTitles[index];
+                          setPointerTitles(newTitles);
+                        }}
                         type="button"
                       >
                         ×
@@ -717,8 +1141,8 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
                 </div>
               </>
             )}
-            {pendingSnapshot && (isAdding || editingId) && (
-              <p className="snapshot-ready-hint">📷 Snapshot ready! It will be added when you save.</p>
+            {pendingPointer && (isAdding || editingId) && (
+              <p className="pointer-ready-hint">🔗 Pointer ready! It will be added when you save.</p>
             )}
             
             <div className="insight-actions">
@@ -758,8 +1182,29 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
                 onDragLeave={handleDragLeave}
               >
                 <div className="insight-card-header">
-                  <div className="insight-header-left">
+                  <div className="insight-header-content">
                     {insight.title && <h3 className="insight-title">{insight.title}</h3>}
+                    <div className="insight-meta-line">
+                      {insight.sensemakers && insight.sensemakers.length > 0 && (
+                        <span className="insight-meta-text">
+                          {insight.sensemakers.map(smId => {
+                            const sm = sensemakers.find(s => s.id === smId);
+                            return sm ? sm.name : smId;
+                          }).join(', ')}
+                        </span>
+                      )}
+                      {insight.departments && insight.departments.length > 0 && insight.sensemakers && insight.sensemakers.length > 0 && (
+                        <span className="meta-separator"> • </span>
+                      )}
+                      {insight.departments && insight.departments.length > 0 && (
+                        <span className="insight-meta-text">
+                          {insight.departments.map(deptId => {
+                            const dept = departments.find(d => d.id === deptId);
+                            return dept ? dept.name : deptId;
+                          }).join(', ')}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <button 
                     className="insight-edit-button"
@@ -768,85 +1213,133 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
                     Edit
                   </button>
                 </div>
+                
                 <div className="insight-text">
                   {renderTextWithCitations(insight.notes, insight.comments)}
                 </div>
                 
-                {insight.snapshots && insight.snapshots.length > 0 && (
-                  <div className="insight-snapshots">
-                    {insight.snapshots.map((snapshot, index) => (
-                      <div key={index} className="insight-snapshot">
-                        <img src={snapshot.imageData} alt={snapshot.title} className="snapshot-image" />
-                        <div className="snapshot-caption">
-                          <strong>{snapshot.title}</strong>
-                          <span className="snapshot-timestamp">{snapshot.timestamp}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
                 <div className="insight-footer">
-                  {insight.departments && insight.departments.length > 0 && (
-                    <div className="insight-meta-inline">
-                      <span className="meta-label">Departments:</span>
-                      <span className="meta-value">
-                        {insight.departments.map(deptId => {
-                          const dept = departments.find(d => d.id === deptId);
-                          return dept ? dept.name : deptId;
-                        }).join(', ')}
-                      </span>
+                
+                {insight.pointerIds && Array.isArray(insight.pointerIds) && insight.pointerIds.length > 0 ? (
+                  <div className="insight-pointers-section">
+                    <h4 className="pointers-section-title">View Pointers</h4>
+                    <div className="insight-pointers">
+                      {insight.pointerIds.map((pointerId) => {
+                        const pointer = pointersData[pointerId];
+                        if (!pointer) return null;
+                        
+                        const pointerData = pointer.pointerData || {};
+                        const tabName = pointerData.tab || pointerData.type || 'View';
+                        const displayName = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+                        const icon = pointerData.type === 'contract' ? '📄' : '📊';
+                        
+                        // Build filter info string
+                        const filterParts = [];
+                        if (pointerData.department && pointerData.department !== 'All') {
+                          filterParts.push(pointerData.department);
+                        }
+                        if (pointerData.searchTerm) {
+                          filterParts.push(`"${pointerData.searchTerm}"`);
+                        }
+                        if (pointerData.insightFilter && pointerData.insightFilter !== 'All') {
+                          filterParts.push(`Insight: ${pointerData.insightFilter}`);
+                        }
+                        if (pointerData.pageNumber) {
+                          filterParts.push(`Page ${pointerData.pageNumber}`);
+                        }
+                        
+                        return (
+                          <button
+                            key={pointerId}
+                            className="insight-pointer-button"
+                            onClick={() => onNavigateToPointer && onNavigateToPointer(pointerData)}
+                            title={pointer.description || 'Click to navigate to this view'}
+                          >
+                            {icon} {pointer.title || `View ${displayName}`}
+                            {filterParts.length > 0 && 
+                              <span className="pointer-filter-info"> • {filterParts.join(' • ')}</span>
+                            }
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                  {insight.comments && insight.comments.length > 0 && (
-                    <div className="linked-comments-section-inline">
-                      <button 
-                        className="linked-comments-toggle-inline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleInsightComments(insight.id);
-                        }}
-                      >
-                        <span className="meta-label">Cited Comments ({insight.comments.length})</span>
-                        <span className="toggle-icon-inline">
-                          {expandedInsightComments[insight.id] ? '−' : '+'}
-                        </span>
-                      </button>
-                    {expandedInsightComments[insight.id] && (
-                      <div className="linked-comments-grid">
-                        {insight.comments.map(commentId => {
-                          // Find the comment in commentsRecords
-                          const commentEntry = Object.entries(commentsRecords).find(
-                            ([, comment]) => comment.recordId === commentId
-                          );
-                          if (!commentEntry) return null;
-                          
-                          const [, commentData] = commentEntry;
-                          const commentText = commentData.fullText || commentData.uniqueId?.split(' | ')[0] || '';
-                          const isExpanded = expandedComments[commentId];
-                          
-                          return (
-                            <div 
-                              key={commentId} 
-                              className={`linked-comment-card ${isExpanded ? 'expanded' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleCommentExpansion(commentId);
-                              }}
-                            >
-                              <div className="comment-text-content">
-                                "{commentText}"
-                              </div>
-                              {!isExpanded && (
-                                <div className="expand-indicator">...</div>
-                              )}
-                            </div>
-                          );
-                        })}
+                  </div>
+                ) : null}
+                  
+                  {insight.comments && insight.comments.length > 0 && (() => {
+                    const citedIds = getCitedCommentIds(insight.notes);
+                    const bankComments = insight.comments;
+                    // Default to collapsed (true)
+                    const isCollapsed = collapsedCommentBank[insight.id] !== false;
+                    
+                    return (
+                      <div className="insight-section-collapsible">
+                        <button 
+                          className="section-toggle-button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCollapsedCommentBank(prev => ({
+                              ...prev,
+                              [insight.id]: prev[insight.id] === false ? true : false
+                            }));
+                          }}
+                        >
+                          <span className="meta-label">Comment Bank ({bankComments.length})</span>
+                          <span className="toggle-icon-inline">
+                            {isCollapsed ? '+' : '−'}
+                          </span>
+                        </button>
+                        {!isCollapsed && (
+                          <div className="comment-bank-grid">
+                            {bankComments.map(commentId => {
+                              const commentEntry = Object.entries(commentsRecords).find(
+                                ([, comment]) => comment.recordId === commentId
+                              );
+                              if (!commentEntry) return null;
+                              
+                              const [, commentData] = commentEntry;
+                              const commentText = commentData.fullText || commentData.uniqueId?.split(' | ')[0] || '';
+                              const isExpanded = expandedComments[commentId];
+                              const isCited = citedIds.includes(commentId);
+                              
+                              return (
+                                <div 
+                                  key={commentId} 
+                                  className={`comment-bank-card ${isExpanded ? 'expanded' : ''} ${isCited ? 'cited' : ''}`}
+                                >
+                                  <div 
+                                    className="comment-bank-text"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleCommentExpansion(commentId);
+                                    }}
+                                  >
+                                    {isCited && <span className="cited-indicator" title="Cited in summary">💬</span>}
+                                    <div className="comment-text-content">
+                                      "{commentText}"
+                                    </div>
+                                    {!isExpanded && (
+                                      <div className="expand-indicator">...</div>
+                                    )}
+                                  </div>
+                                  <button
+                                    className="remove-bank-comment"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveComment(insight.id, commentId);
+                                    }}
+                                    title="Remove from Comment Bank"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             ))}

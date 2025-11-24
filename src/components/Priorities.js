@@ -1,8 +1,6 @@
-import React, { useRef } from 'react';
-import html2canvas from 'html2canvas';
+import React from 'react';
 
-function Priorities({ filteredData, onSnapshot }) {
-  const prioritiesRef = useRef(null);
+function Priorities({ filteredData, onCreatePointer }) {
   // Parse and count priorities from multi-select field
   const getPrioritiesData = () => {
     const priorityCounts = {};
@@ -40,28 +38,9 @@ function Priorities({ filteredData, onSnapshot }) {
   const prioritiesData = getPrioritiesData();
   const maxCount = prioritiesData.length > 0 ? prioritiesData[0].count : 0;
 
-  const handleSnapshot = async () => {
-    if (!prioritiesRef.current) return;
-    
-    try {
-      const canvas = await html2canvas(prioritiesRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2
-      });
-      
-      const imageData = canvas.toDataURL('image/png');
-      const timestamp = new Date().toLocaleString();
-      
-      if (onSnapshot) {
-        onSnapshot({
-          type: 'priorities',
-          title: 'Priorities Histogram',
-          imageData,
-          timestamp
-        });
-      }
-    } catch (error) {
-      console.error('Error capturing snapshot:', error);
+  const handleCreatePointer = () => {
+    if (onCreatePointer) {
+      return onCreatePointer('priorities');
     }
   };
 
@@ -72,12 +51,12 @@ function Priorities({ filteredData, onSnapshot }) {
           <h3 className="section-title">Priorities</h3>
           <p className="section-description">Frequency of priorities mentioned by participants</p>
         </div>
-        <button className="snapshot-button" onClick={handleSnapshot} title="Add snapshot to insight">
-          📷 Snapshot
+        <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
+          🔗 Create Pointer
         </button>
       </div>
       
-      <div className="priorities-content" ref={prioritiesRef}>
+      <div className="priorities-content">
         {prioritiesData.length === 0 ? (
           <div className="no-results">
             <p>No priorities data available for the selected filters.</p>

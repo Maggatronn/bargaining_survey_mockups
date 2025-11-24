@@ -5,7 +5,10 @@ function SearchAndFilters({
   setSearchTerm, 
   selectedDepartment, 
   setSelectedDepartment,
-  departments
+  departments,
+  sensemakers,
+  currentSensemaker,
+  setCurrentSensemaker
 }) {
   return (
     <div className="controls">
@@ -27,6 +30,24 @@ function SearchAndFilters({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        {sensemakers && sensemakers.length > 0 && (
+          <div className="filter-group">
+            <label>Sensemaker:</label>
+            <select 
+              value={currentSensemaker?.id || ''}
+              onChange={(e) => {
+                const selected = sensemakers.find(s => s.id === e.target.value);
+                setCurrentSensemaker(selected);
+                sessionStorage.setItem('currentSensemaker', e.target.value);
+              }}
+            >
+              {sensemakers.map(sm => (
+                <option key={sm.id} value={sm.id}>{sm.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
     </div>
   );

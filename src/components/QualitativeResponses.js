@@ -1,4 +1,5 @@
 import React from 'react';
+import Airtable from 'airtable';
 
 function QualitativeResponses({ 
   filteredData,
@@ -10,7 +11,12 @@ function QualitativeResponses({
   commentsRecords,
   questions,
   selectedDepartment,
-  searchTerm
+  searchTerm,
+  currentSensemaker,
+  sensemakers,
+  selectedInsightFilter,
+  setSelectedInsightFilter,
+  onCreatePointer
 }) {
   // Custom nickname overrides
   const nicknameOverrides = {
@@ -48,18 +54,99 @@ function QualitativeResponses({
   // State for filters
   const [selectedIssue, setSelectedIssue] = React.useState('All');
   const [selectedTag, setSelectedTag] = React.useState('All');
-  const [selectedInsight, setSelectedInsight] = React.useState('All');
   const [showInsightTooltip, setShowInsightTooltip] = React.useState(null);
+  
+  // Use prop for insight filter if provided, otherwise use local state
+  const selectedInsight = selectedInsightFilter || 'All';
+  const setSelectedInsight = setSelectedInsightFilter || (() => {});
   
   // State for pagination/virtual scrolling
   const [displayCount, setDisplayCount] = React.useState(50);
   const scrollContainerRef = React.useRef(null);
+  
+  // State for comment annotations
+  const [commentAnnotations, setCommentAnnotations] = React.useState({});
+  const [editingAnnotation, setEditingAnnotation] = React.useState(null);
+  const [annotationText, setAnnotationText] = React.useState('');
+  const [expandedAnnotations, setExpandedAnnotations] = React.useState({});
   
   // Helper function to get record ID for a comment
   const getCommentRecordId = (uniqueId) => {
     if (!commentsRecords || !commentsRecords[uniqueId]) return null;
     return commentsRecords[uniqueId].recordId;
   };
+
+  // Fetch annotations from Airtable
+  const fetchCommentAnnotations = React.useCallback(async () => {
+    const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
+    const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
+    const annotationsTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_CommentAnnotations;
+    
+    if (!apiKey || !baseId || !annotationsTable) return;
+    
+    const base = new Airtable({ apiKey }).base(baseId);
+    
+    try {
+      const records = [];
+      await base(annotationsTable)
+        .select()
+        .eachPage((pageRecords, fetchNextPage) => {
+          records.push(...pageRecords);
+          fetchNextPage();
+        });
+      
+      // Group annotations by comment
+      const annotationsByComment = {};
+      
+      records.forEach(record => {
+        const commentIds = record.get('Comment') || [];
+        const sensemakerIds = record.get('Sensemaker') || [];
+        const annotationText = record.get('Annotation') || '';
+        // Try to get created timestamp from Airtable's internal field
+        const created = record._rawJson?.createdTime || new Date().toISOString();
+        
+        // Get sensemaker name
+        const sensemakerId = sensemakerIds[0];
+        const sensemaker = sensemakers?.find(s => s.id === sensemakerId);
+        const sensemakerName = sensemaker?.name || 'Unknown';
+        
+        // Find the comment unique ID from the record ID
+        commentIds.forEach(commentRecordId => {
+          const commentEntry = Object.entries(commentsRecords).find(
+            ([, comment]) => comment.recordId === commentRecordId
+          );
+          
+          if (commentEntry) {
+            const [uniqueId] = commentEntry;
+            
+            if (!annotationsByComment[uniqueId]) {
+              annotationsByComment[uniqueId] = [];
+            }
+            
+            annotationsByComment[uniqueId].push({
+              id: record.id,
+              text: annotationText,
+              sensemakerId: sensemakerId,
+              sensemakerName: sensemakerName,
+              timestamp: created
+            });
+          }
+        });
+      });
+      
+      setCommentAnnotations(annotationsByComment);
+      console.log('Fetched annotations for', Object.keys(annotationsByComment).length, 'comments');
+    } catch (err) {
+      console.error('Error fetching annotations:', err);
+    }
+  }, [commentsRecords, sensemakers]);
+
+  // Fetch annotations on mount
+  React.useEffect(() => {
+    if (Object.keys(commentsRecords).length > 0 && sensemakers && sensemakers.length > 0) {
+      fetchCommentAnnotations();
+    }
+  }, [commentsRecords, sensemakers, fetchCommentAnnotations]);
 
   // Helper function to get insights that cite a comment
   const getInsightsForComment = (uniqueId) => {
@@ -69,6 +156,41 @@ function QualitativeResponses({
     return insights.filter(insight => 
       insight.comments && insight.comments.includes(recordId)
     );
+  };
+
+  // Handle annotation save
+  const handleAnnotationSave = async (commentUniqueId) => {
+    if (!currentSensemaker || !annotationText.trim()) return;
+    
+    const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
+    const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
+    const annotationsTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_CommentAnnotations;
+    
+    if (!apiKey || !baseId || !annotationsTable) {
+      console.error('Missing Airtable configuration for annotations');
+      return;
+    }
+    
+    const commentRecord = commentsRecords[commentUniqueId];
+    if (!commentRecord) return;
+    
+    const base = new Airtable({ apiKey }).base(baseId);
+    
+    try {
+      await base(annotationsTable).create({
+        'Comment': [commentRecord.recordId],
+        'Sensemaker': [currentSensemaker.id],
+        'Annotation': annotationText.trim()
+      });
+      
+      // Refetch annotations to get the latest data
+      await fetchCommentAnnotations();
+      
+      setEditingAnnotation(null);
+      setAnnotationText('');
+    } catch (err) {
+      console.error('Error saving annotation:', err);
+    }
   };
 
   // Filter qualitative responses by parent filters, issue, tag, and insight
@@ -112,9 +234,12 @@ function QualitativeResponses({
     if (selectedTag !== 'All') {
       const annotation = annotations[response.uniqueId] || [];
       const tagArray = Array.isArray(annotation) ? annotation : [annotation];
+      const hasAnnotations = commentAnnotations[response.uniqueId] && commentAnnotations[response.uniqueId].length > 0;
+      
       if (selectedTag === 'plus' && !tagArray.includes('plus')) return false;
       if (selectedTag === 'delta' && !tagArray.includes('delta')) return false;
       if (selectedTag === 'star' && !tagArray.includes('star')) return false;
+      if (selectedTag === 'annotated' && !hasAnnotations) return false;
       if (selectedTag === 'untagged' && tagArray.length > 0) return false;
     }
     
@@ -160,6 +285,86 @@ function QualitativeResponses({
   // Only display the first `displayCount` items
   const displayedResponses = filteredQualResponses.slice(0, displayCount);
 
+  const handleCreatePointer = () => {
+    if (onCreatePointer) {
+      return onCreatePointer('comments');
+    }
+  };
+
+  // Calculate histogram data by theme
+  const getHistogramData = () => {
+    const themeData = {};
+    
+    filteredQualResponses.forEach(response => {
+      const theme = response.issue || 'Unknown';
+      if (!themeData[theme]) {
+        themeData[theme] = { total: 0, plus: 0, delta: 0 };
+      }
+      themeData[theme].total++;
+      
+      // Check if comment has plus or delta tag
+      const responseTags = annotations[response.uniqueId] || [];
+      const tagArray = Array.isArray(responseTags) ? responseTags : [responseTags];
+      if (tagArray.includes('plus')) {
+        themeData[theme].plus++;
+      } else if (tagArray.includes('delta')) {
+        themeData[theme].delta++;
+      }
+    });
+    
+    // Convert to array and sort by total count
+    return Object.entries(themeData)
+      .map(([theme, data]) => ({
+        theme,
+        total: data.total,
+        plus: data.plus,
+        delta: data.delta,
+        untagged: data.total - data.plus - data.delta
+      }))
+      .sort((a, b) => b.total - a.total);
+  };
+
+  const histogramData = getHistogramData();
+  const maxCount = histogramData.length > 0 ? histogramData[0].total : 0;
+
+  // Calculate summary stats for single question view
+  const getSummaryStats = () => {
+    let plusCount = 0;
+    let deltaCount = 0;
+    let starCount = 0;
+    let citedCount = 0;
+    let neutralCount = 0;
+
+    filteredQualResponses.forEach(response => {
+      const responseTags = annotations[response.uniqueId] || [];
+      const tagArray = Array.isArray(responseTags) ? responseTags : [responseTags];
+      
+      if (tagArray.includes('plus')) plusCount++;
+      if (tagArray.includes('delta')) deltaCount++;
+      if (tagArray.includes('star')) starCount++;
+      
+      const commentInsights = getInsightsForComment(response.uniqueId);
+      if (commentInsights.length > 0) citedCount++;
+      
+      // Neutral = no plus, delta, or star
+      if (!tagArray.includes('plus') && !tagArray.includes('delta') && !tagArray.includes('star')) {
+        neutralCount++;
+      }
+    });
+
+    return {
+      total: filteredQualResponses.length,
+      plus: plusCount,
+      delta: deltaCount,
+      star: starCount,
+      cited: citedCount,
+      neutral: neutralCount
+    };
+  };
+
+  const summaryStats = getSummaryStats();
+  const showSummary = selectedIssue !== 'All';
+
   return (
     <div className="qualitative-container">
       <div className="section-header-with-filters">
@@ -167,6 +372,9 @@ function QualitativeResponses({
           <h3 className="section-title">Qualitative Responses</h3>
           <p className="section-description">Open-ended feedback from survey participants</p>
         </div>
+        <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
+          🔗 Create Pointer
+        </button>
         
         <div className="qual-filters">
           <div className="filter-group">
@@ -191,6 +399,7 @@ function QualitativeResponses({
               <option value="plus">➕ Plus</option>
               <option value="delta">🔺 Delta</option>
               <option value="star">⭐ Star</option>
+              <option value="annotated">💭 Annotated</option>
               <option value="untagged">— Untagged</option>
             </select>
           </div>
@@ -214,6 +423,88 @@ function QualitativeResponses({
           </div>
         </div>
       </div>
+
+      {/* Theme Histogram or Summary Stats */}
+      {showSummary ? (
+        <div className="question-summary-stats">
+          <div className="summary-stat">
+            <div className="summary-stat-value">{summaryStats.total}</div>
+            <div className="summary-stat-label">Total</div>
+          </div>
+          <div className="summary-stat summary-stat-plus">
+            <div className="summary-stat-value">➕ {summaryStats.plus}</div>
+            <div className="summary-stat-label">Plus</div>
+          </div>
+          <div className="summary-stat summary-stat-delta">
+            <div className="summary-stat-value">🔺 {summaryStats.delta}</div>
+            <div className="summary-stat-label">Delta</div>
+          </div>
+          <div className="summary-stat summary-stat-neutral">
+            <div className="summary-stat-value">{summaryStats.neutral}</div>
+            <div className="summary-stat-label">Neutral</div>
+          </div>
+          <div className="summary-stat summary-stat-cited">
+            <div className="summary-stat-value">💡 {summaryStats.cited}</div>
+            <div className="summary-stat-label">Cited</div>
+          </div>
+          <div className="summary-stat summary-stat-star">
+            <div className="summary-stat-value">⭐ {summaryStats.star}</div>
+            <div className="summary-stat-label">Starred</div>
+          </div>
+        </div>
+      ) : (
+        <div className="theme-histogram-vertical">
+          {histogramData.map((item, index) => {
+          const barHeight = maxCount > 0 ? (item.total / maxCount) * 100 : 0;
+          const plusPercent = item.total > 0 ? (item.plus / item.total) * 100 : 0;
+          const deltaPercent = item.total > 0 ? (item.delta / item.total) * 100 : 0;
+          const untaggedPercent = item.total > 0 ? (item.untagged / item.total) * 100 : 0;
+          
+          // Get the question ID for this theme to use for coloring
+          const matchingResponse = filteredQualResponses.find(r => r.issue === item.theme);
+          const questionId = matchingResponse?.questionId || '';
+          const themeClass = questionId ? `issue-${questionId}` : '';
+          
+          // Create abbreviated label (first 3 words or first 15 chars)
+          const words = item.theme.split(' ');
+          const abbreviatedLabel = words.length > 3 
+            ? words.slice(0, 3).join(' ') + '...'
+            : item.theme.length > 15
+              ? item.theme.substring(0, 15) + '...'
+              : item.theme;
+          
+          return (
+            <div 
+              key={index} 
+              className="histogram-column"
+            >
+              <div className="histogram-bar-vertical" style={{ height: `${barHeight}%` }}>
+                {item.delta > 0 && (
+                  <div 
+                    className="histogram-segment-vertical histogram-delta-vertical" 
+                    style={{ height: `${deltaPercent}%` }}
+                  />
+                )}
+                {item.plus > 0 && (
+                  <div 
+                    className="histogram-segment-vertical histogram-plus-vertical" 
+                    style={{ height: `${plusPercent}%` }}
+                  />
+                )}
+                {item.untagged > 0 && (
+                  <div 
+                    className={`histogram-segment-vertical histogram-theme-vertical ${themeClass}`}
+                    style={{ height: `${untaggedPercent}%` }}
+                  />
+                )}
+              </div>
+              <div className="histogram-label-vertical">{abbreviatedLabel}</div>
+              <div className="histogram-count-vertical">{item.total}</div>
+            </div>
+          );
+        })}
+        </div>
+      )}
 
       <div 
         className="qual-responses-grid" 
@@ -308,8 +599,89 @@ function QualitativeResponses({
                   <option value="plus">➕</option>
                   <option value="delta">🔺</option>
                 </select>
+                {currentSensemaker && (
+                  <button
+                    className="annotation-button"
+                    onClick={() => {
+                      if (editingAnnotation === response.uniqueId) {
+                        setEditingAnnotation(null);
+                        setAnnotationText('');
+                      } else {
+                        setEditingAnnotation(response.uniqueId);
+                        setAnnotationText('');
+                      }
+                    }}
+                    title="Add new annotation"
+                  >
+                    💭
+                  </button>
+                )}
               </div>
             </div>
+            
+            {editingAnnotation === response.uniqueId && (
+              <div className="annotation-editor">
+                <textarea
+                  value={annotationText}
+                  onChange={(e) => setAnnotationText(e.target.value)}
+                  placeholder="Add your annotation..."
+                  className="annotation-textarea"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="annotation-actions">
+                  <button
+                    className="annotation-save"
+                    onClick={() => handleAnnotationSave(response.uniqueId)}
+                    disabled={!annotationText.trim()}
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="annotation-cancel"
+                    onClick={() => {
+                      setEditingAnnotation(null);
+                      setAnnotationText('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {commentAnnotations[response.uniqueId] && commentAnnotations[response.uniqueId].length > 0 && (
+              <div className="comment-annotations-section">
+                <button
+                  className="annotations-toggle-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Toggling annotations for', response.uniqueId, 'Current state:', expandedAnnotations[response.uniqueId]);
+                    setExpandedAnnotations(prev => ({
+                      ...prev,
+                      [response.uniqueId]: !prev[response.uniqueId]
+                    }));
+                  }}
+                >
+                  <span>View Annotations ({commentAnnotations[response.uniqueId].length})</span>
+                  <span className="toggle-icon">{expandedAnnotations[response.uniqueId] ? '−' : '+'}</span>
+                </button>
+                {expandedAnnotations[response.uniqueId] && (
+                  <div className="comment-annotations-list">
+                    {commentAnnotations[response.uniqueId].map((annot, idx) => (
+                      <div key={idx} className="annotation-item">
+                        <div className="annotation-text">{annot.text}</div>
+                        <div className="annotation-meta">
+                          <span className="annotation-author">{annot.sensemakerName}</span>
+                          <span className="annotation-separator"> • </span>
+                          <span className="annotation-date">{new Date(annot.timestamp).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
         })}

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Heatmap from './Heatmap';
 import QualitativeResponses from './QualitativeResponses';
 import Priorities from './Priorities';
 import Stipend from './Stipend';
+import Contract from './Contract';
 
 function DataExplorerPanel({ 
   filteredData, 
@@ -12,12 +13,18 @@ function DataExplorerPanel({
   departmentMap,
   insights,
   commentsRecords,
-  onSnapshot,
+  onCreatePointer,
   questions,
   selectedDepartment,
-  searchTerm
+  searchTerm,
+  currentSensemaker,
+  sensemakers,
+  activeTab,
+  setActiveTab,
+  selectedInsightFilter,
+  setSelectedInsightFilter,
+  contractPage
 }) {
-  const [activeTab, setActiveTab] = useState('heatmap');
 
   return (
     <div className="data-explorer-panel">
@@ -48,11 +55,17 @@ function DataExplorerPanel({
           >
             Stipend
           </button>
+          <button 
+            className={`tab-button ${activeTab === 'contract' ? 'active' : ''}`}
+            onClick={() => setActiveTab('contract')}
+          >
+            Contract
+          </button>
         </div>
       </div>
 
       <div className="panel-content">
-        {activeTab === 'heatmap' && <Heatmap filteredData={filteredData} onSnapshot={onSnapshot} questions={questions} />}
+        {activeTab === 'heatmap' && <Heatmap filteredData={filteredData} onCreatePointer={onCreatePointer} questions={questions} />}
         {activeTab === 'comments' && (
           <QualitativeResponses 
             filteredData={filteredData}
@@ -65,10 +78,16 @@ function DataExplorerPanel({
             questions={questions}
             selectedDepartment={selectedDepartment}
             searchTerm={searchTerm}
+            currentSensemaker={currentSensemaker}
+            sensemakers={sensemakers}
+            selectedInsightFilter={selectedInsightFilter}
+            setSelectedInsightFilter={setSelectedInsightFilter}
+            onCreatePointer={onCreatePointer}
           />
         )}
-        {activeTab === 'priorities' && <Priorities filteredData={filteredData} onSnapshot={onSnapshot} />}
-        {activeTab === 'stipend' && <Stipend filteredData={filteredData} onSnapshot={onSnapshot} />}
+        {activeTab === 'priorities' && <Priorities filteredData={filteredData} onCreatePointer={onCreatePointer} />}
+        {activeTab === 'stipend' && <Stipend filteredData={filteredData} onCreatePointer={onCreatePointer} />}
+        {activeTab === 'contract' && <Contract onCreatePointer={onCreatePointer} targetPage={contractPage} />}
       </div>
     </div>
   );
