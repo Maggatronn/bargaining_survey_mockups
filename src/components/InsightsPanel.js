@@ -15,7 +15,6 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
   const [loading, setLoading] = useState(true);
   const [expandedComments, setExpandedComments] = useState({});
   const [expandedInsightComments, setExpandedInsightComments] = useState({});
-  const [textareaRef, setTextareaRef] = useState(null);
   const [hoveredCitation, setHoveredCitation] = useState(null);
   const [expandedCitations, setExpandedCitations] = useState({});
 
@@ -141,13 +140,6 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
     setSelectedSnapshots([]);
   };
   
-  const toggleDepartment = (deptId) => {
-    if (selectedDepartments.includes(deptId)) {
-      setSelectedDepartments(selectedDepartments.filter(d => d !== deptId));
-    } else {
-      setSelectedDepartments([...selectedDepartments, deptId]);
-    }
-  };
   
   const toggleComment = (commentId) => {
     if (selectedComments.includes(commentId)) {
@@ -629,7 +621,6 @@ function InsightsPanel({ data, commentsRecords, annotations, pendingSnapshot, on
               <span className="editor-hint">💡 Drag comments from the right panel to cite them inline</span>
             </label>
             <textarea
-              ref={setTextareaRef}
               className="insight-textarea"
               placeholder="Write your insight here..."
               value={newInsightText}
