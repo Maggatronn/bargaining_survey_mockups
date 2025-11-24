@@ -17,10 +17,8 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedComments, setExpandedComments] = useState({});
-  const [expandedInsightComments, setExpandedInsightComments] = useState({});
   const [hoveredCitation, setHoveredCitation] = useState(null);
   const [expandedCitations, setExpandedCitations] = useState({});
-  const [collapsedDepartments, setCollapsedDepartments] = useState({});
   const [collapsedCommentBank, setCollapsedCommentBank] = useState({});
   const [showDepartmentSelector, setShowDepartmentSelector] = useState(false);
   const [pointerTitles, setPointerTitles] = useState({});
@@ -30,6 +28,7 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
     fetchDepartments();
     fetchSensemakers();
     fetchInsights();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle pending pointer
@@ -374,13 +373,6 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
     }));
   };
 
-  const toggleInsightComments = (insightId) => {
-    setExpandedInsightComments(prev => ({
-      ...prev,
-      [insightId]: !prev[insightId]
-    }));
-  };
-
   const handleTextareaDrop = (e) => {
     e.preventDefault();
     
@@ -460,16 +452,8 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
     e.dataTransfer.dropEffect = 'copy';
   };
 
-  // Helper to get issue color class from uniqueId
-  const getIssueColorClass = (uniqueId) => {
-    if (!uniqueId) return '';
-    const parts = uniqueId.split(' | ');
-    if (parts.length < 2) return '';
-    const issue = parts[1].replace(' ', '-');
-    return `issue-${issue}`;
-  };
-
-  // Render textarea content with inline comment previews
+  // Render textarea content with inline comment previews (unused but kept for reference)
+  // eslint-disable-next-line no-unused-vars
   const renderTextareaContent = (text) => {
     if (!text) return null;
     
@@ -585,7 +569,7 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
   // Get all cited comment IDs from text
   const getCitedCommentIds = (text) => {
     if (!text) return [];
-    const citationPattern = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
+    const citationPattern = /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
     const citedIds = [];
     let match;
     while ((match = citationPattern.exec(text)) !== null) {
@@ -634,7 +618,7 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
     if (!text) return '';
     
     // Find all [[display-text|record-id]] or [[record-id]] patterns
-    const citationPattern = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
+    const citationPattern = /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
     const parts = [];
     let lastIndex = 0;
     
