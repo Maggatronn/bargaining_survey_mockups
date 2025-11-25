@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Airtable from 'airtable';
-import { getQuestionColor, getQuestionColorClass } from '../utils/colorUtils';
+import { getQuestionColorClass } from '../utils/colorUtils';
 
 function InsightsPanel({ data, commentsRecords, annotations, questions, onNavigateToPointer, pendingPointer, onPointerUsed }) {
   const [insights, setInsights] = useState([]);

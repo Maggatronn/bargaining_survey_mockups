@@ -73,7 +73,10 @@ function QualitativeResponses({
   
   // Use prop for insight filter if provided, otherwise use local state
   const selectedInsight = selectedInsightFilter || 'All';
-  const setSelectedInsight = setSelectedInsightFilter || (() => {});
+  const setSelectedInsight = React.useMemo(
+    () => setSelectedInsightFilter || (() => {}),
+    [setSelectedInsightFilter]
+  );
   
   // Restore filter state from pointer
   React.useEffect(() => {
@@ -371,6 +374,7 @@ function QualitativeResponses({
       setIsShuffled(false);
       setShuffledOrder([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredQualResponses.length, selectedIssue, selectedTag, selectedInsight]);
 
   // Shuffle function - always creates a new random order

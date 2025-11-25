@@ -101,11 +101,9 @@ function Heatmap({ filteredData, onCreatePointer, questions, selectedEconomic, s
       // Use questions config
       quantQuestions.forEach(question => {
         const ratings = { '0': 0, '1': 0, '2': 0, '3': 0 };
-        let totalResponses = 0;
         
         dataToProcess.forEach(item => {
           const rating = item[question.columnHeader];
-          totalResponses++;
           
           if (rating !== null && rating !== undefined && rating !== '') {
             // Convert to string and check if it's 1, 2, or 3
