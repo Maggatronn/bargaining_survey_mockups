@@ -142,6 +142,21 @@ body {
   white-space: nowrap;
 }
 
+.filter-group-compact {
+  margin-left: auto;
+}
+
+.filter-group-compact label {
+  font-size: 0.8rem;
+  color: #6b6661;
+}
+
+.respondent-select {
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  max-width: 200px;
+}
+
 .filter-group select {
   min-width: 150px;
   padding: 10px 15px;
@@ -304,6 +319,95 @@ body {
   transform: scale(1.1);
 }
 
+.info-button {
+  background: transparent;
+  border: 1px solid #d0ccc7;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  color: #6b6661;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-button:hover {
+  background: #f5f3f0;
+  border-color: #8b8680;
+  color: #2a2a2a;
+}
+
+.info-button::before {
+  content: 'ℹ️';
+}
+
+.verified-button {
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.3;
+  filter: grayscale(100%);
+}
+
+.verified-button.verified {
+  opacity: 1;
+  filter: grayscale(0%);
+}
+
+.verified-button:hover {
+  opacity: 1;
+  filter: grayscale(0%);
+  transform: scale(1.15);
+}
+
+.individual-info {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f5f3f0;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+  font-size: 0.9rem;
+}
+
+.individual-info-content {
+  line-height: 1.6;
+  color: #2a2a2a;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.individual-name {
+  font-weight: 600;
+  color: #2a2a2a;
+}
+
+.individual-separator {
+  color: #8b8680;
+  margin: 0 4px;
+}
+
+.individual-email {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.individual-email:hover {
+  text-decoration: underline;
+}
+
+.individual-info-row {
+  line-height: 1.5;
+  color: #6b6661;
+  font-style: italic;
+}
+
 .annotation-editor {
   margin-top: 12px;
   padding-top: 12px;
@@ -406,6 +510,14 @@ body {
   padding: 10px 12px;
   border-radius: 4px;
   border-left: 3px solid #a89f91;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.annotation-content {
+  flex: 1;
 }
 
 .annotation-text {
@@ -413,6 +525,29 @@ body {
   color: #2a2a2a;
   line-height: 1.6;
   margin-bottom: 4px;
+}
+
+.annotation-delete-button {
+  background: transparent;
+  border: none;
+  color: #8b8680;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.annotation-delete-button:hover {
+  background: #e8e5e0;
+  color: #d9534f;
 }
 
 .annotation-meta {
@@ -485,7 +620,7 @@ body {
 
 .heatmap-grid {
   display: grid;
-  grid-template-columns: 2fr repeat(4, 1fr);
+  grid-template-columns: 2fr repeat(7, 1fr);
   gap: 1px;
   background: #d4d2ce;
   border-radius: 4px;
@@ -894,6 +1029,13 @@ body {
 .snapshot-button:hover {
   background: #6b6b6b;
   transform: translateY(-1px);
+}
+
+.section-header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .snapshots-preview {
@@ -1358,6 +1500,29 @@ body {
 .inline-citation-edit.issue-open1 { background: #9f7aea; color: #ffffff; }
 .inline-citation-edit.issue-open2 { background: #718096; color: #ffffff; }
 
+/* Economic vs Non-Economic color schemes for edit mode inline citations */
+.inline-citation-edit.economic-color-0 { background: #667eea; color: #ffffff; }
+.inline-citation-edit.economic-color-1 { background: #4299e1; color: #ffffff; }
+.inline-citation-edit.economic-color-2 { background: #38b2ac; color: #ffffff; }
+.inline-citation-edit.economic-color-3 { background: #5a67d8; color: #ffffff; }
+.inline-citation-edit.economic-color-4 { background: #3182ce; color: #ffffff; }
+.inline-citation-edit.economic-color-5 { background: #319795; color: #ffffff; }
+.inline-citation-edit.economic-color-6 { background: #2c5282; color: #ffffff; }
+.inline-citation-edit.economic-color-7 { background: #2d3748; color: #ffffff; }
+.inline-citation-edit.economic-color-8 { background: #4c51bf; color: #ffffff; }
+.inline-citation-edit.economic-color-9 { background: #2b6cb0; color: #ffffff; }
+
+.inline-citation-edit.non-economic-color-0 { background: #f56565; color: #ffffff; }
+.inline-citation-edit.non-economic-color-1 { background: #ed8936; color: #ffffff; }
+.inline-citation-edit.non-economic-color-2 { background: #ecc94b; color: #ffffff; }
+.inline-citation-edit.non-economic-color-3 { background: #fc8181; color: #ffffff; }
+.inline-citation-edit.non-economic-color-4 { background: #f6ad55; color: #ffffff; }
+.inline-citation-edit.non-economic-color-5 { background: #ed64a6; color: #ffffff; }
+.inline-citation-edit.non-economic-color-6 { background: #e53e3e; color: #ffffff; }
+.inline-citation-edit.non-economic-color-7 { background: #dd6b20; color: #ffffff; }
+.inline-citation-edit.non-economic-color-8 { background: #d69e2e; color: #ffffff; }
+.inline-citation-edit.non-economic-color-9 { background: #d53f8c; color: #ffffff; }
+
 /* Preview container */
 .insight-text-preview {
   margin-top: 12px;
@@ -1444,6 +1609,29 @@ body {
 /* Open-ended question tags for inline citations */
 .inline-citation.issue-open1 { background: #9f7aea; }
 .inline-citation.issue-open2 { background: #718096; }
+
+/* Economic vs Non-Economic color schemes for inline citations */
+.inline-citation.economic-color-0 { background: #667eea; }
+.inline-citation.economic-color-1 { background: #4299e1; }
+.inline-citation.economic-color-2 { background: #38b2ac; }
+.inline-citation.economic-color-3 { background: #5a67d8; }
+.inline-citation.economic-color-4 { background: #3182ce; }
+.inline-citation.economic-color-5 { background: #319795; }
+.inline-citation.economic-color-6 { background: #2c5282; }
+.inline-citation.economic-color-7 { background: #2d3748; }
+.inline-citation.economic-color-8 { background: #4c51bf; }
+.inline-citation.economic-color-9 { background: #2b6cb0; }
+
+.inline-citation.non-economic-color-0 { background: #f56565; }
+.inline-citation.non-economic-color-1 { background: #ed8936; }
+.inline-citation.non-economic-color-2 { background: #ecc94b; }
+.inline-citation.non-economic-color-3 { background: #fc8181; }
+.inline-citation.non-economic-color-4 { background: #f6ad55; }
+.inline-citation.non-economic-color-5 { background: #ed64a6; }
+.inline-citation.non-economic-color-6 { background: #e53e3e; }
+.inline-citation.non-economic-color-7 { background: #dd6b20; }
+.inline-citation.non-economic-color-8 { background: #d69e2e; }
+.inline-citation.non-economic-color-9 { background: #d53f8c; }
 
 .citation-tooltip {
   position: absolute;
@@ -2487,6 +2675,31 @@ body {
 .issue-option.issue-open-2 { background: #4a5568; color: white; }
 .issue-option.issue-All { background: #ffffff; color: #2a2a2a; }
 
+.shuffle-button {
+  background: transparent;
+  border: 1px solid #d0ccc7;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #6b6661;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.shuffle-button:hover {
+  background: #f5f3f0;
+  border-color: #8b8680;
+  color: #2a2a2a;
+}
+
+.shuffle-button.active {
+  background: #e8e5e0;
+  border-color: #8b8680;
+  color: #2a2a2a;
+}
+
 .qual-count {
   padding: 6px 12px;
   background: #f5f4f2;
@@ -2777,6 +2990,31 @@ body {
 .issue-open1 { background: #9f7aea; }
 .issue-open2 { background: #718096; }
 
+/* Economic vs Non-Economic color schemes */
+/* Cool colors for Economic issues (blues, purples, teals) */
+.economic-color-0 { background: #667eea; } /* Blue-purple */
+.economic-color-1 { background: #4299e1; } /* Sky blue */
+.economic-color-2 { background: #38b2ac; } /* Teal */
+.economic-color-3 { background: #5a67d8; } /* Indigo */
+.economic-color-4 { background: #3182ce; } /* Blue */
+.economic-color-5 { background: #319795; } /* Teal-green */
+.economic-color-6 { background: #2c5282; } /* Dark blue */
+.economic-color-7 { background: #2d3748; } /* Navy */
+.economic-color-8 { background: #4c51bf; } /* Purple-blue */
+.economic-color-9 { background: #2b6cb0; } /* Medium blue */
+
+/* Warm colors for Non-Economic issues (reds, oranges, yellows, pinks) */
+.non-economic-color-0 { background: #f56565; } /* Red */
+.non-economic-color-1 { background: #ed8936; } /* Orange */
+.non-economic-color-2 { background: #ecc94b; } /* Yellow */
+.non-economic-color-3 { background: #fc8181; } /* Light red */
+.non-economic-color-4 { background: #f6ad55; } /* Light orange */
+.non-economic-color-5 { background: #ed64a6; } /* Pink */
+.non-economic-color-6 { background: #e53e3e; } /* Dark red */
+.non-economic-color-7 { background: #dd6b20; } /* Dark orange */
+.non-economic-color-8 { background: #d69e2e; } /* Dark yellow */
+.non-economic-color-9 { background: #d53f8c; } /* Dark pink */
+
 .qual-meta {
   display: flex;
   gap: 12px;
@@ -2905,6 +3143,36 @@ body {
 .pointer-filter-info {
   color: #6b6661;
   font-size: 0.85rem;
+}
+
+.pointer-with-download {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pointer-with-download .insight-pointer-button {
+  flex: 1;
+}
+
+.download-pointer-button {
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #d0ccc7;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.download-pointer-button:hover {
+  background: #f5f3f0;
+  border-color: #8b8680;
+  transform: scale(1.05);
 }
 
 /* Contract Viewer Styles */
@@ -3220,4 +3488,25 @@ body {
 
 .summary-stat-star .summary-stat-value {
   color: #d97706;
+}
+
+/* Sortable Heatmap Headers */
+.heatmap-cell.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.heatmap-cell.sortable:hover {
+  background-color: #e8e6e3;
+}
+
+.heatmap-cell.average-cell {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.heatmap-cell.spread-cell {
+  font-weight: 600;
+  color: #ed8936;
 }

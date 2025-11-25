@@ -17,13 +17,16 @@ function DataExplorerPanel({
   questions,
   selectedDepartment,
   searchTerm,
+  selectedEconomic,
+  selectedRespondent,
   currentSensemaker,
   sensemakers,
   activeTab,
   setActiveTab,
   selectedInsightFilter,
   setSelectedInsightFilter,
-  contractPage
+  contractPage,
+  activePointer
 }) {
 
   return (
@@ -65,7 +68,17 @@ function DataExplorerPanel({
       </div>
 
       <div className="panel-content">
-        {activeTab === 'heatmap' && <Heatmap filteredData={filteredData} onCreatePointer={onCreatePointer} questions={questions} />}
+        {activeTab === 'heatmap' && (
+          <Heatmap 
+            filteredData={filteredData} 
+            onCreatePointer={onCreatePointer} 
+            questions={questions} 
+            selectedEconomic={selectedEconomic} 
+            selectedRespondent={selectedRespondent}
+            commentsRecords={commentsRecords}
+            activePointer={activePointer} 
+          />
+        )}
         {activeTab === 'comments' && (
           <QualitativeResponses 
             filteredData={filteredData}
@@ -78,15 +91,32 @@ function DataExplorerPanel({
             questions={questions}
             selectedDepartment={selectedDepartment}
             searchTerm={searchTerm}
+            selectedEconomic={selectedEconomic}
+            selectedRespondent={selectedRespondent}
             currentSensemaker={currentSensemaker}
             sensemakers={sensemakers}
             selectedInsightFilter={selectedInsightFilter}
             setSelectedInsightFilter={setSelectedInsightFilter}
             onCreatePointer={onCreatePointer}
+            activePointer={activePointer}
           />
         )}
-        {activeTab === 'priorities' && <Priorities filteredData={filteredData} onCreatePointer={onCreatePointer} />}
-        {activeTab === 'stipend' && <Stipend filteredData={filteredData} onCreatePointer={onCreatePointer} />}
+        {activeTab === 'priorities' && (
+          <Priorities 
+            filteredData={filteredData} 
+            onCreatePointer={onCreatePointer}
+            selectedRespondent={selectedRespondent}
+            commentsRecords={commentsRecords}
+          />
+        )}
+        {activeTab === 'stipend' && (
+          <Stipend 
+            filteredData={filteredData} 
+            onCreatePointer={onCreatePointer}
+            selectedRespondent={selectedRespondent}
+            commentsRecords={commentsRecords}
+          />
+        )}
         {activeTab === 'contract' && <Contract onCreatePointer={onCreatePointer} targetPage={contractPage} />}
       </div>
     </div>

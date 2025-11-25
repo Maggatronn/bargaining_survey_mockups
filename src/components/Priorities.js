@@ -1,12 +1,36 @@
 import React from 'react';
 
-function Priorities({ filteredData, onCreatePointer }) {
+function Priorities({ filteredData, onCreatePointer, selectedRespondent, commentsRecords }) {
   // Parse and count priorities from multi-select field
   const getPrioritiesData = () => {
     const priorityCounts = {};
 
+    // Filter data by respondent if selected
+    let dataToProcess = filteredData;
+    if (selectedRespondent && selectedRespondent !== 'All' && commentsRecords) {
+      // Find the comment record(s) that match this respondent
+      const matchingCommentIds = Object.keys(commentsRecords).filter(uniqueId => {
+        const comment = commentsRecords[uniqueId];
+        const preferredName = comment.preferredName || '';
+        const mitEmail = comment.mitEmail || '';
+        const identifier = preferredName && mitEmail 
+          ? `${preferredName} | ${mitEmail}`
+          : preferredName || mitEmail;
+        return identifier === selectedRespondent;
+      });
+      
+      // Get the individual IDs from matching comments
+      const matchingIndividualIds = matchingCommentIds
+        .map(uniqueId => commentsRecords[uniqueId].individual)
+        .filter(Boolean);
+      
+      // Filter survey responses by individual ID
+      dataToProcess = filteredData.filter(item => 
+        matchingIndividualIds.includes(item.ID)
+      );
+    }
     
-    filteredData.forEach(item => {
+    dataToProcess.forEach(item => {
       const priorities = item['Top Three Priorities'];
       
       // Check if priorities is an array (multi-select field from Airtable)
@@ -44,6 +68,60 @@ function Priorities({ filteredData, onCreatePointer }) {
     }
   };
 
+  const handleDownload = () => {
+    const targetElement = document.querySelector('.priorities-histogram');
+    if (!targetElement) {
+      alert('Could not find priorities histogram to download');
+      return;
+    }
+    
+    const bbox = targetElement.getBoundingClientRect();
+    const width = bbox.width;
+    const height = bbox.height;
+    
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("xmlns", svgNS);
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    
+    const foreignObject = document.createElementNS(svgNS, "foreignObject");
+    foreignObject.setAttribute("width", "100%");
+    foreignObject.setAttribute("height", "100%");
+    
+    const clone = targetElement.cloneNode(true);
+    const styleElement = document.createElement('style');
+    const styles = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
+        } catch (e) {
+          return '';
+        }
+      })
+      .join('\n');
+    styleElement.textContent = styles;
+    
+    foreignObject.appendChild(styleElement);
+    foreignObject.appendChild(clone);
+    svg.appendChild(foreignObject);
+    
+    const filename = `priorities_${new Date().toISOString().split('T')[0]}.svg`;
+    
+    const svgString = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="priorities-container">
       <div className="section-header">
@@ -51,9 +129,14 @@ function Priorities({ filteredData, onCreatePointer }) {
           <h3 className="section-title">Priorities</h3>
           <p className="section-description">Frequency of priorities mentioned by participants</p>
         </div>
-        <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
-          🔗 Create Pointer
-        </button>
+        <div className="section-header-buttons">
+          <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
+            🔗 Create Pointer
+          </button>
+          <button className="snapshot-button" onClick={handleDownload} title="Download as SVG">
+            ⬇️ Download
+          </button>
+        </div>
       </div>
       
       <div className="priorities-content">

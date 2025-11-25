@@ -13,6 +13,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [selectedDepartment, setSelectedDepartment] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEconomic, setSelectedEconomic] = useState('All'); // 'All', 'Economic', 'Non-Economic'
+  const [selectedRespondent, setSelectedRespondent] = useState('All');
   const [annotations, setAnnotations] = useState({});
   const [tagRecordIds, setTagRecordIds] = useState({ plus: null, delta: null, star: null });
   const [commentsRecords, setCommentsRecords] = useState({});
@@ -163,7 +165,9 @@ function App() {
                     fullText: responseText,
                     question: question,
                     questionName: questionName,
-                    department: record.fields['Department']
+                    department: record.fields['Department'],
+                    preferredName: record.fields['Preferred Name'] || '',
+                    mitEmail: record.fields['MIT Email'] || ''
                   };
                 }
               });
@@ -320,8 +324,9 @@ function App() {
 
   // Create a pointer to the current view state
   const [pendingPointer, setPendingPointer] = useState(null);
+  const [activePointer, setActivePointer] = useState(null); // Track the pointer being navigated to
   
-  const handleCreatePointer = useCallback((type, pageNumber) => {
+  const handleCreatePointer = useCallback((type, pageNumber, componentState) => {
     const pointer = {
       type, // 'heatmap', 'comments', 'priorities', 'stipend', or 'contract'
       tab: activeTab,
@@ -335,7 +340,8 @@ function App() {
         department: selectedDepartment,
         searchTerm,
         insightFilter: selectedInsightFilter,
-        pageNumber: pageNumber // For contract pointers
+        pageNumber: pageNumber, // For contract pointers
+        ...componentState // Spread component-specific state (sort, filters, etc.)
       }
     };
     setPendingPointer(pointer);
@@ -346,10 +352,13 @@ function App() {
   const handleNavigateToPointer = useCallback((pointer) => {
     if (!pointer) return;
     
+    // Set the active pointer so components can restore their state
+    setActivePointer(pointer);
+    
     // Set the tab
     setActiveTab(pointer.tab || pointer.type);
     
-    // Apply filters
+    // Apply global filters
     if (pointer.department) {
       setSelectedDepartment(pointer.department);
     }
@@ -359,11 +368,17 @@ function App() {
     if (pointer.insightFilter) {
       setSelectedInsightFilter(pointer.insightFilter);
     }
+    if (pointer.selectedEconomic) {
+      setSelectedEconomic(pointer.selectedEconomic);
+    }
     
     // For contract pointers, jump to the page
     if (pointer.type === 'contract' && pointer.pageNumber) {
       setContractPage(pointer.pageNumber);
     }
+    
+    // Clear the active pointer after a short delay (components will have consumed it)
+    setTimeout(() => setActivePointer(null), 100);
   }, []);
 
   useEffect(() => {
@@ -401,11 +416,15 @@ function App() {
               const typeField = record.fields.Type;
               const type = typeField && typeField.name ? typeField.name : typeField;
               
+              const economicField = record.fields['(Non)Economic'];
+              const economic = economicField && economicField.name ? economicField.name : economicField;
+              
               records.push({
                 id: record.fields.ID,
                 columnHeader: record.fields['Column Header'],
                 nickname: record.fields.Nickname,
-                type: type
+                type: type,
+                economic: economic // 'Economic' or 'Non-Economic'
               });
             });
             fetchNextPage();
@@ -467,12 +486,16 @@ function App() {
     
     // Update local state immediately
     let newTags;
-    if (value === '') {
-      // Remove plus/delta but keep star
-      newTags = currentArray.filter(t => t === 'star');
+    
+    // If value is already an array, use it directly (for verified button)
+    if (Array.isArray(value)) {
+      newTags = value;
+    } else if (value === '') {
+      // Remove plus/delta but keep star and verified
+      newTags = currentArray.filter(t => t === 'star' || t === 'verified');
     } else {
-      // Replace plus/delta but keep star
-      newTags = currentArray.filter(t => t === 'star');
+      // Replace plus/delta but keep star and verified
+      newTags = currentArray.filter(t => t === 'star' || t === 'verified');
       newTags.push(value);
     }
     
@@ -558,6 +581,21 @@ function App() {
     return <div className="loading">Loading data...</div>;
   }
 
+  // Generate unique respondent list from comments
+  const respondentOptions = ['All'];
+  const uniqueRespondents = new Set();
+  Object.values(commentsRecords).forEach(comment => {
+    const preferredName = comment.preferredName || '';
+    const mitEmail = comment.mitEmail || '';
+    if (preferredName || mitEmail) {
+      const identifier = preferredName && mitEmail 
+        ? `${preferredName} | ${mitEmail}`
+        : preferredName || mitEmail;
+      uniqueRespondents.add(identifier);
+    }
+  });
+  respondentOptions.push(...Array.from(uniqueRespondents).sort());
+
   return (
     <div className="App">
       <header className="App-header">
@@ -575,6 +613,11 @@ function App() {
         selectedDepartment={selectedDepartment}
         setSelectedDepartment={setSelectedDepartment}
         departments={departmentFilterOptions}
+        selectedEconomic={selectedEconomic}
+        setSelectedEconomic={setSelectedEconomic}
+        selectedRespondent={selectedRespondent}
+        setSelectedRespondent={setSelectedRespondent}
+        respondents={respondentOptions}
         sensemakers={sensemakers}
         currentSensemaker={currentSensemaker}
         setCurrentSensemaker={setCurrentSensemaker}
@@ -586,6 +629,7 @@ function App() {
             data={data} 
             commentsRecords={commentsRecords} 
             annotations={annotations}
+            questions={questions}
             onNavigateToPointer={handleNavigateToPointer}
             pendingPointer={pendingPointer}
             onPointerUsed={() => setPendingPointer(null)}
@@ -612,6 +656,8 @@ function App() {
             questions={questions}
             selectedDepartment={selectedDepartment}
             searchTerm={searchTerm}
+            selectedEconomic={selectedEconomic}
+            selectedRespondent={selectedRespondent}
             currentSensemaker={currentSensemaker}
             sensemakers={sensemakers}
             activeTab={activeTab}
@@ -619,6 +665,7 @@ function App() {
             selectedInsightFilter={selectedInsightFilter}
             setSelectedInsightFilter={setSelectedInsightFilter}
             contractPage={contractPage}
+            activePointer={activePointer}
           />
         </div>
       </div>

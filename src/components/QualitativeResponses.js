@@ -1,5 +1,6 @@
 import React from 'react';
 import Airtable from 'airtable';
+import { getQuestionColor, getQuestionColorClass } from '../utils/colorUtils';
 
 function QualitativeResponses({ 
   filteredData,
@@ -12,11 +13,14 @@ function QualitativeResponses({
   questions,
   selectedDepartment,
   searchTerm,
+  selectedEconomic,
+  selectedRespondent,
   currentSensemaker,
   sensemakers,
   selectedInsightFilter,
   setSelectedInsightFilter,
-  onCreatePointer
+  onCreatePointer,
+  activePointer
 }) {
   // Custom nickname overrides
   const nicknameOverrides = {
@@ -28,10 +32,19 @@ function QualitativeResponses({
   const getQualitativeResponses = () => {
     const responses = [];
     
+    // Create a map from question ID to economic classification
+    const questionEconomicMap = {};
+    questions.forEach(q => {
+      questionEconomicMap[q.id] = q.economic;
+    });
+    
     // Convert commentsRecords object to array
     Object.entries(commentsRecords).forEach(([uniqueId, comment]) => {
       // Use override if available
       const displayName = nicknameOverrides[comment.questionName] || comment.questionName || comment.question;
+      
+      // Get economic classification from question
+      const economic = questionEconomicMap[comment.question] || 'Unknown';
       
       responses.push({
         text: comment.fullText,
@@ -42,7 +55,8 @@ function QualitativeResponses({
         department: comment.department || 'Unknown',
         name: 'Anonymous', // We can add this from Survey Response link if needed
         uniqueId: uniqueId,
-        questionId: comment.question
+        questionId: comment.question,
+        economic: economic // 'Economic' or 'Non-Economic'
       });
     });
     
@@ -55,14 +69,34 @@ function QualitativeResponses({
   const [selectedIssue, setSelectedIssue] = React.useState('All');
   const [selectedTag, setSelectedTag] = React.useState('All');
   const [showInsightTooltip, setShowInsightTooltip] = React.useState(null);
+  const [showIndividualInfo, setShowIndividualInfo] = React.useState(null); // Track which comment's individual info is shown
   
   // Use prop for insight filter if provided, otherwise use local state
   const selectedInsight = selectedInsightFilter || 'All';
   const setSelectedInsight = setSelectedInsightFilter || (() => {});
   
+  // Restore filter state from pointer
+  React.useEffect(() => {
+    if (activePointer && activePointer.type === 'comments') {
+      if (activePointer.selectedIssue) {
+        setSelectedIssue(activePointer.selectedIssue);
+      }
+      if (activePointer.selectedTag) {
+        setSelectedTag(activePointer.selectedTag);
+      }
+      if (activePointer.selectedInsight) {
+        setSelectedInsight(activePointer.selectedInsight);
+      }
+    }
+  }, [activePointer, setSelectedInsight]);
+  
   // State for pagination/virtual scrolling
   const [displayCount, setDisplayCount] = React.useState(50);
   const scrollContainerRef = React.useRef(null);
+  
+  // State for shuffle
+  const [isShuffled, setIsShuffled] = React.useState(false);
+  const [shuffledOrder, setShuffledOrder] = React.useState([]);
   
   // State for comment annotations
   const [commentAnnotations, setCommentAnnotations] = React.useState({});
@@ -193,6 +227,30 @@ function QualitativeResponses({
     }
   };
 
+  // Handle annotation delete
+  const handleDeleteAnnotation = async (annotationRecordId) => {
+    const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
+    const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
+    const annotationsTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_CommentAnnotations;
+    
+    if (!apiKey || !baseId || !annotationsTable) {
+      console.error('Missing Airtable configuration for annotations');
+      return;
+    }
+    
+    const base = new Airtable({ apiKey }).base(baseId);
+    
+    try {
+      await base(annotationsTable).destroy(annotationRecordId);
+      
+      // Refetch annotations to get the latest data
+      await fetchCommentAnnotations();
+    } catch (err) {
+      console.error('Error deleting annotation:', err);
+      alert('Failed to delete annotation. Please try again.');
+    }
+  };
+
   // Filter qualitative responses by parent filters, issue, tag, and insight
   const filteredQualResponses = qualResponses.filter(response => {
     // Apply parent department filter
@@ -225,6 +283,30 @@ function QualitativeResponses({
       }
     }
     
+    // Apply parent economic filter
+    if (selectedEconomic && selectedEconomic !== 'All') {
+      if (response.economic !== selectedEconomic) {
+        return false;
+      }
+    }
+    
+    // Apply parent respondent filter
+    if (selectedRespondent && selectedRespondent !== 'All') {
+      const commentData = commentsRecords[response.uniqueId];
+      if (commentData) {
+        const preferredName = commentData.preferredName || '';
+        const mitEmail = commentData.mitEmail || '';
+        const identifier = preferredName && mitEmail 
+          ? `${preferredName} | ${mitEmail}`
+          : preferredName || mitEmail;
+        if (identifier !== selectedRespondent) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+    
     // Apply local issue filter
     if (selectedIssue !== 'All' && response.issue !== selectedIssue) {
       return false;
@@ -239,6 +321,7 @@ function QualitativeResponses({
       if (selectedTag === 'plus' && !tagArray.includes('plus')) return false;
       if (selectedTag === 'delta' && !tagArray.includes('delta')) return false;
       if (selectedTag === 'star' && !tagArray.includes('star')) return false;
+      if (selectedTag === 'verified' && !tagArray.includes('verified')) return false;
       if (selectedTag === 'annotated' && !hasAnnotations) return false;
       if (selectedTag === 'untagged' && tagArray.length > 0) return false;
     }
@@ -282,12 +365,45 @@ function QualitativeResponses({
     }
   }, [displayCount, filteredQualResponses.length]);
 
+  // Reset shuffle when filters change
+  React.useEffect(() => {
+    if (isShuffled) {
+      setIsShuffled(false);
+      setShuffledOrder([]);
+    }
+  }, [filteredQualResponses.length, selectedIssue, selectedTag, selectedInsight]);
+
+  // Shuffle function - always creates a new random order
+  const handleShuffle = () => {
+    // Create shuffled indices
+    const indices = filteredQualResponses.map((_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    setShuffledOrder(indices);
+    setIsShuffled(true);
+    // Reset to show first 50
+    setDisplayCount(50);
+  };
+  
+  // Apply shuffle if active
+  const orderedResponses = isShuffled 
+    ? shuffledOrder.map(i => filteredQualResponses[i]).filter(Boolean)
+    : filteredQualResponses;
+  
   // Only display the first `displayCount` items
-  const displayedResponses = filteredQualResponses.slice(0, displayCount);
+  const displayedResponses = orderedResponses.slice(0, displayCount);
 
   const handleCreatePointer = () => {
     if (onCreatePointer) {
-      return onCreatePointer('comments');
+      // Pass additional comments-specific state
+      return onCreatePointer('comments', null, {
+        selectedIssue,
+        selectedTag,
+        selectedInsight,
+        selectedEconomic
+      });
     }
   };
 
@@ -365,6 +481,68 @@ function QualitativeResponses({
   const summaryStats = getSummaryStats();
   const showSummary = selectedIssue !== 'All';
 
+  const handleDownload = () => {
+    const targetElement = document.querySelector('.theme-histogram-vertical') || document.querySelector('.summary-stats-container');
+    if (!targetElement) {
+      alert('Could not find visualization to download');
+      return;
+    }
+    
+    const bbox = targetElement.getBoundingClientRect();
+    const width = bbox.width;
+    const height = bbox.height;
+    
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("xmlns", svgNS);
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    
+    const foreignObject = document.createElementNS(svgNS, "foreignObject");
+    foreignObject.setAttribute("width", "100%");
+    foreignObject.setAttribute("height", "100%");
+    
+    const clone = targetElement.cloneNode(true);
+    const styleElement = document.createElement('style');
+    const styles = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
+        } catch (e) {
+          return '';
+        }
+      })
+      .join('\n');
+    styleElement.textContent = styles;
+    
+    foreignObject.appendChild(styleElement);
+    foreignObject.appendChild(clone);
+    svg.appendChild(foreignObject);
+    
+    const filterParts = [];
+    if (selectedIssue && selectedIssue !== 'All') {
+      filterParts.push(selectedIssue.replace(/\s+/g, '-'));
+    }
+    if (selectedEconomic && selectedEconomic !== 'All') {
+      filterParts.push(selectedEconomic.replace(/\s+/g, '-'));
+    }
+    const filterString = filterParts.length > 0 ? '_' + filterParts.join('_') : '';
+    const filename = `comments${filterString}_${new Date().toISOString().split('T')[0]}.svg`;
+    
+    const svgString = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="qualitative-container">
       <div className="section-header-with-filters">
@@ -372,9 +550,14 @@ function QualitativeResponses({
           <h3 className="section-title">Qualitative Responses</h3>
           <p className="section-description">Open-ended feedback from survey participants</p>
         </div>
-        <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
-          🔗 Create Pointer
-        </button>
+        <div className="section-header-buttons">
+          <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
+            🔗 Create Pointer
+          </button>
+          <button className="snapshot-button" onClick={handleDownload} title="Download as SVG">
+            ⬇️ Download
+          </button>
+        </div>
         
         <div className="qual-filters">
           <div className="filter-group">
@@ -399,6 +582,7 @@ function QualitativeResponses({
               <option value="plus">➕ Plus</option>
               <option value="delta">🔺 Delta</option>
               <option value="star">⭐ Star</option>
+              <option value="verified">✅ Verified</option>
               <option value="annotated">💭 Annotated</option>
               <option value="untagged">— Untagged</option>
             </select>
@@ -417,6 +601,14 @@ function QualitativeResponses({
               ))}
             </select>
           </div>
+          
+          <button 
+            className="shuffle-button"
+            onClick={handleShuffle}
+            title="Shuffle comments randomly"
+          >
+            🔀 Shuffle
+          </button>
           
           <div className="qual-count">
             {filteredQualResponses.length} of {qualResponses.length}
@@ -460,10 +652,11 @@ function QualitativeResponses({
           const deltaPercent = item.total > 0 ? (item.delta / item.total) * 100 : 0;
           const untaggedPercent = item.total > 0 ? (item.untagged / item.total) * 100 : 0;
           
-          // Get the question ID for this theme to use for coloring
+          // Get the question ID and economic classification for this theme
           const matchingResponse = filteredQualResponses.find(r => r.issue === item.theme);
           const questionId = matchingResponse?.questionId || '';
-          const themeClass = questionId ? `issue-${questionId}` : '';
+          const economic = matchingResponse?.economic || 'Unknown';
+          const themeColor = getQuestionColor(questionId, economic);
           
           // Create abbreviated label (first 3 words or first 15 chars)
           const words = item.theme.split(' ');
@@ -493,8 +686,11 @@ function QualitativeResponses({
                 )}
                 {item.untagged > 0 && (
                   <div 
-                    className={`histogram-segment-vertical histogram-theme-vertical ${themeClass}`}
-                    style={{ height: `${untaggedPercent}%` }}
+                    className="histogram-segment-vertical histogram-theme-vertical"
+                    style={{ 
+                      height: `${untaggedPercent}%`,
+                      backgroundColor: themeColor
+                    }}
                   />
                 )}
               </div>
@@ -516,6 +712,7 @@ function QualitativeResponses({
           const tagArray = Array.isArray(responseTags) ? responseTags : [responseTags];
           const plusDeltaTag = tagArray.find(t => t === 'plus' || t === 'delta') || '';
           const isStarred = tagArray.includes('star');
+          const isVerified = tagArray.includes('verified');
           const commentInsights = getInsightsForComment(response.uniqueId);
           const isCited = commentInsights.length > 0;
           
@@ -537,19 +734,32 @@ function QualitativeResponses({
           <div 
             key={index} 
             className="qual-card"
-            draggable="true"
-            onDragStart={(e) => {
-              e.dataTransfer.setData('commentId', response.uniqueId);
-              e.dataTransfer.effectAllowed = 'copy';
-            }}
           >
-            <div className="qual-text">
+            <div 
+              className="qual-text"
+              style={{ userSelect: 'text', cursor: 'text' }}
+            >
               "{response.text}"
             </div>
             
-            <div className="qual-footer">
+            <div 
+              className="qual-footer"
+              draggable="true"
+              onDragStart={(e) => {
+                e.dataTransfer.setData('commentId', response.uniqueId);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              style={{ cursor: 'grab' }}
+            >
               <div className="qual-footer-left">
-                <span className={`tag-issue issue-${response.questionId || response.columnHeader.replace(' ', '-')}`}>
+                <button
+                  className="info-button"
+                  onClick={() => {
+                    setShowIndividualInfo(showIndividualInfo === response.uniqueId ? null : response.uniqueId);
+                  }}
+                  title="Show individual information"
+                ></button>
+                <span className={`tag-issue ${getQuestionColorClass(response.questionId, response.economic)}`}>
                   {response.issue}
                 </span>
                 <div className="qual-meta">
@@ -590,6 +800,20 @@ function QualitativeResponses({
                 >
                   {isStarred ? '⭐' : '☆'}
                 </button>
+                <button 
+                  className={`verified-button ${isVerified ? 'verified' : ''}`}
+                  onClick={() => {
+                    const currentTags = annotations[response.uniqueId] || [];
+                    const tagArray = Array.isArray(currentTags) ? currentTags : [currentTags];
+                    const newTags = isVerified 
+                      ? tagArray.filter(t => t !== 'verified')
+                      : [...tagArray.filter(t => t !== ''), 'verified'];
+                    handleAnnotationChange(response.uniqueId, newTags);
+                  }}
+                  title={isVerified ? 'Remove verified' : 'Mark as verified'}
+                >
+                  ✅
+                </button>
                 <select 
                   className="annotation-dropdown"
                   value={plusDeltaTag}
@@ -618,6 +842,26 @@ function QualitativeResponses({
                 )}
               </div>
             </div>
+            
+            {showIndividualInfo === response.uniqueId && (() => {
+              const commentData = commentsRecords[response.uniqueId];
+              const preferredName = commentData?.preferredName || '';
+              const mitEmail = commentData?.mitEmail || '';
+              
+              return (
+                <div className="individual-info">
+                  {(preferredName || mitEmail) ? (
+                    <div className="individual-info-content">
+                      {preferredName && <span className="individual-name">{preferredName}</span>}
+                      {preferredName && mitEmail && <span className="individual-separator"> | </span>}
+                      {mitEmail && <a href={`mailto:${mitEmail}`} className="individual-email">{mitEmail}</a>}
+                    </div>
+                  ) : (
+                    <div className="individual-info-row">No individual information available</div>
+                  )}
+                </div>
+              );
+            })()}
             
             {editingAnnotation === response.uniqueId && (
               <div className="annotation-editor">
@@ -670,12 +914,26 @@ function QualitativeResponses({
                   <div className="comment-annotations-list">
                     {commentAnnotations[response.uniqueId].map((annot, idx) => (
                       <div key={idx} className="annotation-item">
-                        <div className="annotation-text">{annot.text}</div>
-                        <div className="annotation-meta">
-                          <span className="annotation-author">{annot.sensemakerName}</span>
-                          <span className="annotation-separator"> • </span>
-                          <span className="annotation-date">{new Date(annot.timestamp).toLocaleDateString()}</span>
+                        <div className="annotation-content">
+                          <div className="annotation-text">{annot.text}</div>
+                          <div className="annotation-meta">
+                            <span className="annotation-author">{annot.sensemakerName}</span>
+                            <span className="annotation-separator"> • </span>
+                            <span className="annotation-date">{new Date(annot.timestamp).toLocaleDateString()}</span>
+                          </div>
                         </div>
+                        <button
+                          className="annotation-delete-button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Delete this annotation?')) {
+                              await handleDeleteAnnotation(annot.id);
+                            }
+                          }}
+                          title="Delete annotation"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Airtable from 'airtable';
+import { getQuestionColor, getQuestionColorClass } from '../utils/colorUtils';
 
-function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer, pendingPointer, onPointerUsed }) {
+function InsightsPanel({ data, commentsRecords, annotations, questions, onNavigateToPointer, pendingPointer, onPointerUsed }) {
   const [insights, setInsights] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [sensemakers, setSensemakers] = useState([]);
@@ -23,6 +24,91 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
   const [showDepartmentSelector, setShowDepartmentSelector] = useState(false);
   const [pointerTitles, setPointerTitles] = useState({});
   const [pointerDescriptions, setPointerDescriptions] = useState({});
+
+  // Function to download visualization as SVG
+  const handleDownloadVisualization = async (pointer) => {
+    const pointerData = pointer.pointerData || {};
+    const tab = pointerData.tab || pointerData.type || 'view';
+    
+    // Generate filename
+    const filterParts = [];
+    if (pointerData.department && pointerData.department !== 'All') {
+      filterParts.push(pointerData.department.replace(/\s+/g, '-'));
+    }
+    if (pointerData.selectedIssue && pointerData.selectedIssue !== 'All') {
+      filterParts.push(pointerData.selectedIssue.replace(/\s+/g, '-'));
+    }
+    const filterString = filterParts.length > 0 ? '_' + filterParts.join('_') : '';
+    const filename = `${tab}${filterString}_${new Date().toISOString().split('T')[0]}.svg`;
+    
+    // Find the visualization element based on tab
+    let targetElement = null;
+    if (tab === 'heatmap') {
+      targetElement = document.querySelector('.heatmap');
+    } else if (tab === 'comments') {
+      targetElement = document.querySelector('.theme-histogram-vertical') || document.querySelector('.summary-stats-container');
+    } else if (tab === 'priorities') {
+      targetElement = document.querySelector('.priorities-histogram');
+    } else if (tab === 'stipend') {
+      targetElement = document.querySelector('.stipend-histogram');
+    }
+    
+    if (!targetElement) {
+      alert('Could not find visualization to download');
+      return;
+    }
+    
+    // Clone the element to avoid modifying the original
+    const clone = targetElement.cloneNode(true);
+    
+    // Get computed styles
+    const bbox = targetElement.getBoundingClientRect();
+    const width = bbox.width;
+    const height = bbox.height;
+    
+    // Create SVG wrapper
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("xmlns", svgNS);
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    
+    // Create foreignObject to embed HTML
+    const foreignObject = document.createElementNS(svgNS, "foreignObject");
+    foreignObject.setAttribute("width", "100%");
+    foreignObject.setAttribute("height", "100%");
+    
+    // Add styles inline
+    const styleElement = document.createElement('style');
+    const styles = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
+        } catch (e) {
+          return '';
+        }
+      })
+      .join('\n');
+    styleElement.textContent = styles;
+    
+    foreignObject.appendChild(styleElement);
+    foreignObject.appendChild(clone);
+    svg.appendChild(foreignObject);
+    
+    // Convert to string and download
+    const svgString = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     fetchDepartments();
@@ -508,7 +594,11 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
         
         const [uniqueId, commentData] = commentEntry;
         const commentText = commentData.fullText || '';
-        const issueColorClass = `issue-${commentData.question || 'unknown'}`;
+        
+        // Get economic classification from questions
+        const questionObj = questions?.find(q => q.id === commentData.question);
+        const economic = questionObj?.economic || 'Unknown';
+        const issueColorClass = getQuestionColorClass(commentData.question || 'unknown', economic);
         
         // Get tags from annotations
         const responseTags = (annotations && annotations[uniqueId]) || [];
@@ -599,7 +689,7 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
 
     try {
       await base(insightTable).update(insightId, {
-        'Linked Comments': updatedComments
+        'Comments': updatedComments
       });
 
       // Update local state
@@ -610,6 +700,7 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
       ));
     } catch (error) {
       console.error('Error removing comment:', error);
+      alert('Failed to remove comment. Please try again.');
     }
   };
 
@@ -671,7 +762,18 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
         const [uniqueId, commentData] = commentEntry;
         const commentText = commentData.fullText || uniqueId.split(' | ')[0];
         const questionId = commentData.question || '';
-        const issueColorClass = `issue-${questionId}`;
+        
+        // Get economic classification and question name from questions
+        const questionObj = questions?.find(q => q.id === questionId);
+        const economic = questionObj?.economic || 'Unknown';
+        const issueColorClass = getQuestionColorClass(questionId, economic);
+        
+        // Get the question display name (nickname or column header)
+        const questionDisplayName = commentData.questionName || 
+                                    questionObj?.nickname || 
+                                    questionObj?.columnHeader || 
+                                    questionId || 
+                                    'Unknown';
         
         // Get tags from annotations
         const responseTags = (annotations && annotations[uniqueId]) || [];
@@ -679,10 +781,6 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
           ? responseTags.filter(t => t && t !== '') 
           : (responseTags && responseTags !== '' ? [responseTags] : []);
         const plusDeltaTag = tagArray.find(t => t === 'plus' || t === 'delta');
-        
-        // Get department and question from uniqueId
-        const parts = uniqueId.split(' | ');
-        const question = parts[1] || 'Unknown';
         
         return (
           <span
@@ -696,7 +794,7 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
               <span className="citation-tooltip">
                 <div className="tooltip-text">"{commentText}"</div>
                 <div className="tooltip-meta">
-                  <div><strong>Question:</strong> {question}</div>
+                  <div><strong>Question:</strong> {questionDisplayName}</div>
                   {tagArray.length > 0 && (
                     <div><strong>Tags:</strong> {tagArray.map(t => 
                       t === 'plus' ? '➕' : 
@@ -1225,25 +1323,75 @@ function InsightsPanel({ data, commentsRecords, annotations, onNavigateToPointer
                         if (pointerData.searchTerm) {
                           filterParts.push(`"${pointerData.searchTerm}"`);
                         }
+                        if (pointerData.selectedEconomic && pointerData.selectedEconomic !== 'All') {
+                          filterParts.push(pointerData.selectedEconomic);
+                        }
                         if (pointerData.insightFilter && pointerData.insightFilter !== 'All') {
                           filterParts.push(`Insight: ${pointerData.insightFilter}`);
                         }
+                        
+                        // Heatmap-specific: sort information
+                        if (pointerData.type === 'heatmap' && pointerData.sortColumn) {
+                          const sortColumnName = pointerData.sortColumn === 'issue' ? 'Issue' :
+                                                 pointerData.sortColumn === '0' ? 'Zero' :
+                                                 pointerData.sortColumn === 'average' ? 'Average' :
+                                                 pointerData.sortColumn === 'stdDev' ? 'Spread' :
+                                                 pointerData.sortColumn === 'total' ? 'Total' :
+                                                 `Rating ${pointerData.sortColumn}`;
+                          const sortDir = pointerData.sortDirection === 'asc' ? '↑' : '↓';
+                          filterParts.push(`Sort: ${sortColumnName} ${sortDir}`);
+                        }
+                        
+                        // Comments-specific: issue/tag/insight filters
+                        if (pointerData.type === 'comments') {
+                          if (pointerData.selectedIssue && pointerData.selectedIssue !== 'All') {
+                            filterParts.push(`Q: ${pointerData.selectedIssue}`);
+                          }
+                          if (pointerData.selectedTag && pointerData.selectedTag !== 'All') {
+                            const tagLabel = pointerData.selectedTag === 'plus' ? '➕' :
+                                           pointerData.selectedTag === 'delta' ? '🔺' :
+                                           pointerData.selectedTag === 'star' ? '⭐' :
+                                           pointerData.selectedTag === 'annotated' ? '💭' :
+                                           pointerData.selectedTag;
+                            filterParts.push(`Tag: ${tagLabel}`);
+                          }
+                          if (pointerData.selectedInsight && pointerData.selectedInsight !== 'All') {
+                            filterParts.push(`Insight: ${pointerData.selectedInsight}`);
+                          }
+                        }
+                        
                         if (pointerData.pageNumber) {
                           filterParts.push(`Page ${pointerData.pageNumber}`);
                         }
                         
                         return (
-                          <button
-                            key={pointerId}
-                            className="insight-pointer-button"
-                            onClick={() => onNavigateToPointer && onNavigateToPointer(pointerData)}
-                            title={pointer.description || 'Click to navigate to this view'}
-                          >
-                            {icon} {pointer.title || `View ${displayName}`}
-                            {filterParts.length > 0 && 
-                              <span className="pointer-filter-info"> • {filterParts.join(' • ')}</span>
-                            }
-                          </button>
+                          <div key={pointerId} className="pointer-with-download">
+                            <button
+                              className="insight-pointer-button"
+                              onClick={() => onNavigateToPointer && onNavigateToPointer(pointerData)}
+                              title={pointer.description || 'Click to navigate to this view'}
+                            >
+                              {icon} {pointer.title || `View ${displayName}`}
+                              {filterParts.length > 0 && 
+                                <span className="pointer-filter-info"> • {filterParts.join(' • ')}</span>
+                              }
+                            </button>
+                            <button
+                              className="download-pointer-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // First navigate to the view
+                                if (onNavigateToPointer) {
+                                  onNavigateToPointer(pointerData);
+                                  // Wait a bit for the view to render, then download
+                                  setTimeout(() => handleDownloadVisualization(pointer), 500);
+                                }
+                              }}
+                              title="Download visualization as SVG"
+                            >
+                              ⬇️
+                            </button>
+                          </div>
                         );
                       })}
                     </div>

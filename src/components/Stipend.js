@@ -1,11 +1,36 @@
 import React from 'react';
 
-function Stipend({ filteredData, onCreatePointer }) {
+function Stipend({ filteredData, onCreatePointer, selectedRespondent, commentsRecords }) {
   // Parse and count housing costs
   const getStipendData = () => {
     const costCounts = {};
     
-    filteredData.forEach(item => {
+    // Filter data by respondent if selected
+    let dataToProcess = filteredData;
+    if (selectedRespondent && selectedRespondent !== 'All' && commentsRecords) {
+      // Find the comment record(s) that match this respondent
+      const matchingCommentIds = Object.keys(commentsRecords).filter(uniqueId => {
+        const comment = commentsRecords[uniqueId];
+        const preferredName = comment.preferredName || '';
+        const mitEmail = comment.mitEmail || '';
+        const identifier = preferredName && mitEmail 
+          ? `${preferredName} | ${mitEmail}`
+          : preferredName || mitEmail;
+        return identifier === selectedRespondent;
+      });
+      
+      // Get the individual IDs from matching comments
+      const matchingIndividualIds = matchingCommentIds
+        .map(uniqueId => commentsRecords[uniqueId].individual)
+        .filter(Boolean);
+      
+      // Filter survey responses by individual ID
+      dataToProcess = filteredData.filter(item => 
+        matchingIndividualIds.includes(item.ID)
+      );
+    }
+    
+    dataToProcess.forEach(item => {
       if (item['Salary increase range'] && item['Salary increase range'].toString().trim()) {
         const cost = item['Salary increase range'].toString().trim();
         
@@ -42,16 +67,75 @@ function Stipend({ filteredData, onCreatePointer }) {
     }
   };
 
+  const handleDownload = () => {
+    const targetElement = document.querySelector('.stipend-histogram');
+    if (!targetElement) {
+      alert('Could not find stipend histogram to download');
+      return;
+    }
+    
+    const bbox = targetElement.getBoundingClientRect();
+    const width = bbox.width;
+    const height = bbox.height;
+    
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("xmlns", svgNS);
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    
+    const foreignObject = document.createElementNS(svgNS, "foreignObject");
+    foreignObject.setAttribute("width", "100%");
+    foreignObject.setAttribute("height", "100%");
+    
+    const clone = targetElement.cloneNode(true);
+    const styleElement = document.createElement('style');
+    const styles = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
+        } catch (e) {
+          return '';
+        }
+      })
+      .join('\n');
+    styleElement.textContent = styles;
+    
+    foreignObject.appendChild(styleElement);
+    foreignObject.appendChild(clone);
+    svg.appendChild(foreignObject);
+    
+    const filename = `stipend_${new Date().toISOString().split('T')[0]}.svg`;
+    
+    const svgString = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="stipend-container">
       <div className="section-header">
         <div className="section-header-text">
-          <h3 className="section-title">Housing Cost Stipend</h3>
-          <p className="section-description">Distribution of housing costs from lowest to highest</p>
+          <h3 className="section-title">Stipend Increase</h3>
+          <p className="section-description">Distribution of stipend increases from lowest to highest</p>
         </div>
-        <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
-          🔗 Create Pointer
-        </button>
+        <div className="section-header-buttons">
+          <button className="snapshot-button" onClick={handleCreatePointer} title="Create pointer to this view">
+            🔗 Create Pointer
+          </button>
+          <button className="snapshot-button" onClick={handleDownload} title="Download as SVG">
+            ⬇️ Download
+          </button>
+        </div>
       </div>
       
       <div className="stipend-content">

@@ -6,6 +6,11 @@ function SearchAndFilters({
   selectedDepartment, 
   setSelectedDepartment,
   departments,
+  selectedEconomic,
+  setSelectedEconomic,
+  selectedRespondent,
+  setSelectedRespondent,
+  respondents,
   sensemakers,
   currentSensemaker,
   setCurrentSensemaker
@@ -19,6 +24,15 @@ function SearchAndFilters({
             {departments.map(dept => (
               <option key={dept} value={dept}>{dept || 'Unknown'}</option>
             ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Type:</label>
+          <select value={selectedEconomic} onChange={(e) => setSelectedEconomic(e.target.value)}>
+            <option value="All">All</option>
+            <option value="Economic">Economic</option>
+            <option value="Non-Economic">Non-Economic</option>
           </select>
         </div>
 
@@ -48,6 +62,19 @@ function SearchAndFilters({
             </select>
           </div>
         )}
+
+        <div className="filter-group filter-group-compact">
+          <label>Respondent:</label>
+          <select 
+            value={selectedRespondent} 
+            onChange={(e) => setSelectedRespondent(e.target.value)}
+            className="respondent-select"
+          >
+            {respondents.map(resp => (
+              <option key={resp} value={resp}>{resp}</option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
