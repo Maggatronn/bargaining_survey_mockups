@@ -2879,30 +2879,23 @@ body {
 .selected-tags-display {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px 0;
-  margin-bottom: 4px;
+  gap: 4px;
+  padding: 6px 0;
 }
 
 .selected-tag-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: linear-gradient(135deg, #f0ede8 0%, #e8e5e0 100%);
-  border: 1px solid #d4d2ce;
-  border-radius: 16px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #4a4a4a;
+  justify-content: center;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  padding: 2px;
 }
 
 .selected-tag-badge:hover {
-  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
-  border-color: #e53e3e;
-  color: white;
+  transform: scale(1.2);
+  opacity: 0.7;
 }
 
 /* Tag dropdown container */
@@ -2912,27 +2905,24 @@ body {
 
 .tag-dropdown-trigger {
   background: none;
-  border: 1px solid #d4d2ce;
-  border-radius: 6px;
-  font-size: 1rem;
+  border: none;
+  font-size: 1.2rem;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 4px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   transition: all 0.2s ease;
-  color: #6b6b6b;
+  opacity: 0.6;
 }
 
 .tag-dropdown-trigger:hover {
-  background: #f5f3f0;
-  border-color: #a89f91;
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 .tag-dropdown-trigger.has-tags {
-  background: #e8f5e9;
-  border-color: #4caf50;
-  color: #2e7d32;
+  opacity: 1;
 }
 
 .tag-dropdown-menu {

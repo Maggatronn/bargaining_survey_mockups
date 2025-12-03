@@ -766,7 +766,7 @@ function QualitativeResponses({
               "{response.text}"
             </div>
             
-            {/* Display selected tags */}
+            {/* Display selected tags - emoji only */}
             {selectedTagDetails.length > 0 && (
               <div className="selected-tags-display">
                 {selectedTagDetails.map(tag => (
@@ -774,9 +774,9 @@ function QualitativeResponses({
                     key={tag.key} 
                     className="selected-tag-badge"
                     onClick={() => handleTagToggle(response.uniqueId, tag.key)}
-                    title={`Click to remove: ${tag.title}`}
+                    title={`${tag.title} - Click to remove`}
                   >
-                    {tag.emoji} {tag.title}
+                    {tag.emoji}
                   </span>
                 ))}
               </div>
