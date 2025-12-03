@@ -103,6 +103,9 @@ function QualitativeResponses({
   const [isShuffled, setIsShuffled] = React.useState(false);
   const [shuffledOrder, setShuffledOrder] = React.useState([]);
   
+  // State for histogram visibility
+  const [isHistogramMinimized, setIsHistogramMinimized] = React.useState(false);
+  
   // State for comment annotations
   const [commentAnnotations, setCommentAnnotations] = React.useState({});
   const [editingAnnotation, setEditingAnnotation] = React.useState(null);
@@ -644,7 +647,17 @@ function QualitativeResponses({
       </div>
 
       {/* Theme Histogram or Summary Stats */}
-      {showSummary ? (
+      <div className="histogram-toggle-container">
+        <button 
+          className="histogram-toggle-button"
+          onClick={() => setIsHistogramMinimized(!isHistogramMinimized)}
+          title={isHistogramMinimized ? "Show histogram" : "Hide histogram"}
+        >
+          {isHistogramMinimized ? '▶ Show Chart' : '▼ Hide Chart'}
+        </button>
+      </div>
+      
+      {!isHistogramMinimized && (showSummary ? (
         <div className="question-summary-stats">
           <div className="summary-stat">
             <div className="summary-stat-value">{summaryStats.total}</div>
@@ -742,7 +755,7 @@ function QualitativeResponses({
           );
         })}
         </div>
-      )}
+      ))}
 
       <div 
         className="qual-responses-grid" 
