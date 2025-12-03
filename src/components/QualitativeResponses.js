@@ -112,16 +112,22 @@ function QualitativeResponses({
   // State for tag dropdown
   const [openTagDropdown, setOpenTagDropdown] = React.useState(null);
   
-  // Click outside handler to close dropdown
+  // State for insight dropdown (mobile add to insight)
+  const [openInsightDropdown, setOpenInsightDropdown] = React.useState(null);
+  
+  // Click outside handler to close dropdowns
   React.useEffect(() => {
     const handleClickOutside = (e) => {
       if (openTagDropdown && !e.target.closest('.tag-dropdown-container')) {
         setOpenTagDropdown(null);
       }
+      if (openInsightDropdown && !e.target.closest('.insight-add-dropdown-container')) {
+        setOpenInsightDropdown(null);
+      }
     };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [openTagDropdown]);
+  }, [openTagDropdown, openInsightDropdown]);
   
   // Helper function to get record ID for a comment
   const getCommentRecordId = (uniqueId) => {
@@ -700,6 +706,8 @@ function QualitativeResponses({
             <div 
               key={index} 
               className="histogram-column"
+              title={item.theme}
+              onClick={() => alert(item.theme)}
             >
               <div className="histogram-bar-vertical" style={{ height: `${barHeight}%` }}>
                 {item.delta > 0 && (
@@ -901,6 +909,81 @@ function QualitativeResponses({
                     💭
                   </button>
                 )}
+                
+                {/* Mobile lightbulb - add to insight dropdown */}
+                <div className={`insight-add-dropdown-container mobile-only ${openInsightDropdown === response.uniqueId ? 'is-open' : ''}`}>
+                  <button
+                    className={`insight-add-trigger ${isCited ? 'is-cited' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenInsightDropdown(openInsightDropdown === response.uniqueId ? null : response.uniqueId);
+                    }}
+                    title={isCited ? "Already cited in insight(s)" : "Add to insight"}
+                  >
+                    💡
+                  </button>
+                  
+                  {openInsightDropdown === response.uniqueId && (
+                    <div className="insight-add-dropdown-menu">
+                      <div className="insight-dropdown-header">Add to Insight</div>
+                      {insights && insights.length > 0 ? (
+                        insights.map(insight => {
+                          const isInInsight = commentInsights.some(ci => ci.id === insight.id);
+                          return (
+                            <label 
+                              key={insight.id} 
+                              className={`insight-dropdown-option ${isInInsight ? 'selected' : ''}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isInInsight}
+                                onChange={async () => {
+                                  // Toggle comment in insight
+                                  const apiKey = process.env.REACT_APP_AIRTABLE_API_KEY;
+                                  const baseId = process.env.REACT_APP_AIRTABLE_BASE_ID;
+                                  const insightsTable = process.env.REACT_APP_AIRTABLE_TABLE_NAME_Insights;
+                                  if (!apiKey || !baseId || !insightsTable) return;
+                                  
+                                  const base = new Airtable({ apiKey }).base(baseId);
+                                  const commentRecordId = getCommentRecordId(response.uniqueId);
+                                  if (!commentRecordId) return;
+                                  
+                                  try {
+                                    const currentCitations = insight.citations || [];
+                                    let newCitations;
+                                    if (isInInsight) {
+                                      newCitations = currentCitations.filter(id => id !== commentRecordId);
+                                    } else {
+                                      newCitations = [...currentCitations, commentRecordId];
+                                    }
+                                    
+                                    await base(insightsTable).update(insight.id, {
+                                      'Citations': newCitations
+                                    });
+                                    
+                                    // Refresh the page to update
+                                    window.location.reload();
+                                  } catch (error) {
+                                    console.error('Error updating insight:', error);
+                                  }
+                                }}
+                              />
+                              <span className="insight-option-title">{insight.title || insight.name || 'Untitled Insight'}</span>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <div className="no-insights-message">No insights created yet</div>
+                      )}
+                      <button 
+                        className="insight-dropdown-close"
+                        onClick={() => setOpenInsightDropdown(null)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             

@@ -32,6 +32,8 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [sensemakers, setSensemakers] = useState([]);
   const [currentSensemaker, setCurrentSensemaker] = useState(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileActiveView, setMobileActiveView] = useState('explorer'); // 'insights' or 'explorer'
 
   // Check if already authenticated in this session
   useEffect(() => {
@@ -208,10 +210,10 @@ function App() {
       });
     };
 
-    // Fetch Survey Responses table
+    // Fetch Survey Responses table (deduplicated by Individual - keep most recent)
     const fetchSurveyResponses = () => {
       return new Promise((resolve, reject) => {
-        const records = [];
+        const allRecords = [];
         base(surveyResponsesTable)
           .select({
             view: 'Grid view'
@@ -219,13 +221,55 @@ function App() {
           .eachPage(
             function page(pageRecords, fetchNextPage) {
               pageRecords.forEach(record => {
-                records.push(record.fields);
+                allRecords.push({
+                  ...record.fields,
+                  _recordId: record.id,
+                  _created: record.fields.Created || record._rawJson?.createdTime
+                });
               });
               fetchNextPage();
             },
             function done(err) {
-              if (err) reject(err);
-              else resolve(records);
+              if (err) {
+                reject(err);
+              } else {
+                // Deduplicate by Individual - keep most recent response
+                const individualMap = new Map();
+                
+                allRecords.forEach(record => {
+                  const individual = record.Individual;
+                  
+                  // If no Individual field, include the record as-is
+                  if (!individual) {
+                    individualMap.set(record._recordId, record);
+                    return;
+                  }
+                  
+                  // Get the Individual ID (could be an array from a linked record)
+                  const individualId = Array.isArray(individual) ? individual[0] : individual;
+                  
+                  const existingRecord = individualMap.get(individualId);
+                  
+                  if (!existingRecord) {
+                    // First record for this individual
+                    individualMap.set(individualId, record);
+                  } else {
+                    // Compare Created dates - keep the more recent one
+                    const existingDate = new Date(existingRecord._created || 0);
+                    const newDate = new Date(record._created || 0);
+                    
+                    if (newDate > existingDate) {
+                      individualMap.set(individualId, record);
+                    }
+                  }
+                });
+                
+                // Convert map values to array
+                const deduplicatedRecords = Array.from(individualMap.values());
+                console.log(`Survey responses: ${allRecords.length} total, ${deduplicatedRecords.length} after deduplication by Individual`);
+                
+                resolve(deduplicatedRecords);
+              }
             }
           );
       });
@@ -643,24 +687,167 @@ function App() {
             </div>
       </header>
 
-      <SearchAndFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedDepartment={selectedDepartment}
-        setSelectedDepartment={setSelectedDepartment}
-        departments={departmentFilterOptions}
-        selectedEconomic={selectedEconomic}
-        setSelectedEconomic={setSelectedEconomic}
-        selectedRespondent={selectedRespondent}
-        setSelectedRespondent={setSelectedRespondent}
-        respondents={respondentOptions}
-        sensemakers={sensemakers}
-        currentSensemaker={currentSensemaker}
-        setCurrentSensemaker={setCurrentSensemaker}
-      />
+      {/* Mobile Search + Filter Button + Pointer Button */}
+      <div className="mobile-search-bar">
+        <input
+          type="text"
+          placeholder="Search comments..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="mobile-search-input"
+        />
+        <button 
+          className="mobile-pointer-button"
+          onClick={() => handleCreatePointer(activeTab)}
+          title="Create Pointer"
+        >
+          🔗
+        </button>
+        <button 
+          className="mobile-filter-button"
+          onClick={() => setMobileFiltersOpen(true)}
+        >
+          <span className="filter-icon">⚙️</span>
+        </button>
+      </div>
+
+      {/* Mobile Filter Panel */}
+      {mobileFiltersOpen && (
+        <div className="mobile-filter-overlay" onClick={() => setMobileFiltersOpen(false)}>
+          <div className="mobile-filter-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-filter-header">
+              <h3>Filters</h3>
+              <button 
+                className="mobile-filter-close"
+                onClick={() => setMobileFiltersOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="mobile-filter-content">
+              <div className="mobile-filter-group">
+                <label>Sensemaker</label>
+                <select
+                  value={currentSensemaker?.id || ''}
+                  onChange={(e) => {
+                    const sm = sensemakers.find(s => s.id === e.target.value);
+                    setCurrentSensemaker(sm || null);
+                  }}
+                >
+                  <option value="">Select sensemaker...</option>
+                  {sensemakers.map(sm => (
+                    <option key={sm.id} value={sm.id}>{sm.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mobile-filter-group">
+                <label>Department</label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                >
+                  {departmentFilterOptions.map((dept, index) => (
+                    <option key={index} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mobile-filter-group">
+                <label>Economic</label>
+                <select
+                  value={selectedEconomic}
+                  onChange={(e) => setSelectedEconomic(e.target.value)}
+                >
+                  <option value="All">All Issues</option>
+                  <option value="Economic">Economic</option>
+                  <option value="Non-Economic">Non-Economic</option>
+                </select>
+              </div>
+
+              <div className="mobile-filter-group">
+                <label>Respondent</label>
+                <select
+                  value={selectedRespondent}
+                  onChange={(e) => setSelectedRespondent(e.target.value)}
+                >
+                  {respondentOptions.map((resp, index) => (
+                    <option key={index} value={resp}>{resp}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Comment-specific filters - only show when on Comments tab */}
+              {activeTab === 'comments' && (
+                <>
+                  <div className="mobile-filter-divider">
+                    <span>Comment Filters</span>
+                  </div>
+                  
+                  <div className="mobile-filter-group">
+                    <label>Insight</label>
+                    <select
+                      value={selectedInsightFilter}
+                      onChange={(e) => setSelectedInsightFilter(e.target.value)}
+                    >
+                      <option value="All">All Comments</option>
+                      <option value="Cited">Cited in Insights</option>
+                      <option value="Uncited">Not Yet Cited</option>
+                      {insights.map(insight => (
+                        <option key={insight.id} value={insight.id}>
+                          {insight.title || insight.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mobile-filter-actions">
+              <button 
+                className="mobile-filter-clear"
+                onClick={() => {
+                  setSelectedDepartment('All');
+                  setSelectedEconomic('All');
+                  setSelectedRespondent('All');
+                }}
+              >
+                Clear All
+              </button>
+              <button 
+                className="mobile-filter-apply"
+                onClick={() => setMobileFiltersOpen(false)}
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Filters - hidden on mobile via CSS */}
+      <div className="desktop-only-filters">
+        <SearchAndFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedDepartment={selectedDepartment}
+          setSelectedDepartment={setSelectedDepartment}
+          departments={departmentFilterOptions}
+          selectedEconomic={selectedEconomic}
+          setSelectedEconomic={setSelectedEconomic}
+          selectedRespondent={selectedRespondent}
+          setSelectedRespondent={setSelectedRespondent}
+          respondents={respondentOptions}
+          sensemakers={sensemakers}
+          currentSensemaker={currentSensemaker}
+          setCurrentSensemaker={setCurrentSensemaker}
+        />
+      </div>
 
       <div className="panels-container">
-        <div className="left-panel" style={{ width: `${leftPanelWidth}%` }}>
+        <div className={`left-panel ${mobileActiveView === 'insights' ? 'mobile-active' : 'mobile-hidden'}`} style={{ width: `${leftPanelWidth}%` }}>
           <InsightsPanel 
             data={data} 
             commentsRecords={commentsRecords} 
@@ -680,7 +867,7 @@ function App() {
           <div className="divider-handle"></div>
                 </div>
                 
-        <div className="right-panel" style={{ width: `${100 - leftPanelWidth}%` }}>
+        <div className={`right-panel ${mobileActiveView === 'explorer' ? 'mobile-active' : 'mobile-hidden'}`} style={{ width: `${100 - leftPanelWidth}%` }}>
           <DataExplorerPanel 
             filteredData={filteredData}
             annotations={annotations}
@@ -707,6 +894,24 @@ function App() {
             activePointer={activePointer}
           />
         </div>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="mobile-bottom-nav">
+        <button 
+          className={`mobile-nav-button ${mobileActiveView === 'explorer' ? 'active' : ''}`}
+          onClick={() => setMobileActiveView('explorer')}
+        >
+          <span className="nav-icon">📊</span>
+          <span className="nav-label">Data Explorer</span>
+        </button>
+        <button 
+          className={`mobile-nav-button ${mobileActiveView === 'insights' ? 'active' : ''}`}
+          onClick={() => setMobileActiveView('insights')}
+        >
+          <span className="nav-icon">💡</span>
+          <span className="nav-label">Insights</span>
+        </button>
       </div>
     </div>
   );

@@ -324,29 +324,29 @@ function Heatmap({ filteredData, onCreatePointer, questions, selectedEconomic, s
       <div className="heatmap">
         <div className="heatmap-grid">
           {/* Header row */}
-          <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('issue')}>
+          <div className="heatmap-cell header-cell row-header sortable" onClick={() => handleSort('issue')}>
             Issue {sortColumn === 'issue' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('0')}>
-            Zero {sortColumn === '0' && (sortDirection === 'asc' ? '▲' : '▼')}
+            <span className="header-full">Zero</span><span className="header-short">0</span> {sortColumn === '0' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('1')}>
-            Rating: 1 {sortColumn === '1' && (sortDirection === 'asc' ? '▲' : '▼')}
+            <span className="header-full">Rating: 1</span><span className="header-short">1</span> {sortColumn === '1' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('2')}>
-            Rating: 2 {sortColumn === '2' && (sortDirection === 'asc' ? '▲' : '▼')}
+            <span className="header-full">Rating: 2</span><span className="header-short">2</span> {sortColumn === '2' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('3')}>
-            Rating: 3 {sortColumn === '3' && (sortDirection === 'asc' ? '▲' : '▼')}
+            <span className="header-full">Rating: 3</span><span className="header-short">3</span> {sortColumn === '3' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('average')}>
-            Average {sortColumn === 'average' && (sortDirection === 'asc' ? '▲' : '▼')}
+            <span className="header-full">Average</span><span className="header-short">Avg</span> {sortColumn === 'average' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('stdDev')}>
-            Spread {sortColumn === 'stdDev' && (sortDirection === 'asc' ? '▲' : '▼')}
+            <span className="header-full">Spread</span><span className="header-short">Std</span> {sortColumn === 'stdDev' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           <div className="heatmap-cell header-cell sortable" onClick={() => handleSort('total')}>
-            Total {sortColumn === 'total' && (sortDirection === 'asc' ? '▲' : '▼')}
+            <span className="header-full">Total</span><span className="header-short">Tot</span> {sortColumn === 'total' && (sortDirection === 'asc' ? '▲' : '▼')}
           </div>
           
           {/* Data rows */}
