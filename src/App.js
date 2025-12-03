@@ -5,9 +5,11 @@ import SearchAndFilters from './components/SearchAndFilters';
 import InsightsPanel from './components/InsightsPanel';
 import DataExplorerPanel from './components/DataExplorerPanel';
 import PasswordProtection from './components/PasswordProtection';
+import SensemakerSelection from './components/SensemakerSelection';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [sensemakerSelected, setSensemakerSelected] = useState(false);
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,8 @@ function App() {
   const [selectedEconomic, setSelectedEconomic] = useState('All'); // 'All', 'Economic', 'Non-Economic'
   const [selectedRespondent, setSelectedRespondent] = useState('All');
   const [annotations, setAnnotations] = useState({});
-  const [tagRecordIds, setTagRecordIds] = useState({ plus: null, delta: null, star: null });
+  const [tagRecordIds, setTagRecordIds] = useState({}); // Map of tag key → record ID
+  const [tagOptions, setTagOptions] = useState([]); // Array of {id, title, emoji, key}
   const [commentsRecords, setCommentsRecords] = useState({});
   const [departments, setDepartments] = useState([]);
   const [departmentMap, setDepartmentMap] = useState({});
@@ -35,6 +38,10 @@ function App() {
     const authenticated = sessionStorage.getItem('authenticated');
     if (authenticated === 'true') {
       setIsAuthenticated(true);
+    }
+    const sensemakerChosen = sessionStorage.getItem('sensemakerSelected');
+    if (sensemakerChosen === 'true') {
+      setSensemakerSelected(true);
     }
   }, []);
 
@@ -106,7 +113,7 @@ function App() {
               records.forEach(record => {
                 sensemakersList.push({
                   id: record.id,
-                  name: record.fields['Full Name']|| 'Unknown'
+                  name: record.fields['Preferred Name'] || record.fields['Full Name'] || 'Unknown'
                 });
               });
               fetchNextPage();
@@ -119,25 +126,43 @@ function App() {
       });
     };
 
-    // Fetch Tags table to get Plus and Delta record IDs
+    // Fetch Tags table to get all tag options with Title and Emoji
     const fetchTags = () => {
       return new Promise((resolve, reject) => {
-        const tags = {};
+        const tagIdMap = {}; // Map of tag key → record ID
+        const options = []; // Array of tag options
         base(tagsTable)
           .select()
           .eachPage(
             function page(records, fetchNextPage) {
               records.forEach(record => {
-                const name = record.fields.Name || record.fields.name || record.fields.Tag;
-                if (name === 'Plus') tags.plus = record.id;
-                if (name === 'Delta') tags.delta = record.id;
-                if (name === 'Star') tags.star = record.id;
+                const title = record.fields.Title || record.fields.Name || record.fields.name || record.fields.Tag || '';
+                const emoji = record.fields.Emoji || '';
+                
+                // Create a key from the title (lowercase, no spaces)
+                const key = title.toLowerCase().replace(/\s+/g, '_');
+                
+                if (title) {
+                  tagIdMap[key] = record.id;
+                  options.push({
+                    id: record.id,
+                    title: title,
+                    emoji: emoji,
+                    key: key
+                  });
+                  
+                  // Also keep backwards compatibility with old tag names
+                  if (title === 'Plus' || title.includes('Maintain')) tagIdMap.plus = record.id;
+                  if (title === 'Delta' || title.includes('Improve')) tagIdMap.delta = record.id;
+                  if (title === 'Star' || title.includes('Testimonial')) tagIdMap.star = record.id;
+                  if (title === 'Verified' || title.includes('Verified')) tagIdMap.verified = record.id;
+                }
               });
               fetchNextPage();
             },
             function done(err) {
               if (err) reject(err);
-              else resolve(tags);
+              else resolve({ tagIdMap, options });
             }
           );
       });
@@ -208,8 +233,9 @@ function App() {
 
     // Fetch all data
     Promise.all([fetchTags(), fetchComments(), fetchSurveyResponses(), fetchDepartments(), fetchSensemakers()])
-      .then(([tags, comments, surveyResponses, { depts, deptMap }, sensemakersList]) => {
-        setTagRecordIds(tags);
+      .then(([{ tagIdMap, options }, comments, surveyResponses, { depts, deptMap }, sensemakersList]) => {
+        setTagRecordIds(tagIdMap);
+        setTagOptions(options);
         setCommentsRecords(comments);
         setData(surveyResponses);
         setFilteredData(surveyResponses);
@@ -217,33 +243,37 @@ function App() {
         setDepartmentMap(deptMap);
         setSensemakers(sensemakersList);
         
-        // Set first sensemaker as default if available
+        // Restore sensemaker from session storage if available
         if (sensemakersList.length > 0) {
           const savedSensemaker = sessionStorage.getItem('currentSensemaker');
           if (savedSensemaker) {
             const sensemaker = sensemakersList.find(s => s.id === savedSensemaker);
             if (sensemaker) {
               setCurrentSensemaker(sensemaker);
-            } else {
-              setCurrentSensemaker(sensemakersList[0]);
             }
-          } else {
-            setCurrentSensemaker(sensemakersList[0]);
           }
+          // Otherwise leave as null (None selected)
         }
         
         // Initialize annotations from existing tags (now supports multiple tags)
+        // Create reverse map from record ID to tag key
+        const reverseTagMap = {};
+        Object.entries(tagIdMap).forEach(([key, id]) => {
+          reverseTagMap[id] = key;
+        });
+        
         const initialAnnotations = {};
         Object.entries(comments).forEach(([uniqueId, comment]) => {
           if (comment.tags && comment.tags.length > 0) {
-            const tagSet = new Set();
+            const tagKeys = [];
             comment.tags.forEach(tagId => {
-              if (tagId === tags.plus) tagSet.add('plus');
-              if (tagId === tags.delta) tagSet.add('delta');
-              if (tagId === tags.star) tagSet.add('star');
+              const key = reverseTagMap[tagId];
+              if (key) {
+                tagKeys.push(key);
+              }
             });
-            if (tagSet.size > 0) {
-              initialAnnotations[uniqueId] = Array.from(tagSet);
+            if (tagKeys.length > 0) {
+              initialAnnotations[uniqueId] = tagKeys;
             }
           }
         });
@@ -479,25 +509,10 @@ function App() {
     fetchInsights();
   }, []);
 
-  // Handle annotation change (dropdown)
+  // Handle annotation change (multi-select tags)
   const handleAnnotationChange = async (uniqueId, value) => {
-    const currentTags = annotations[uniqueId] || [];
-    const currentArray = Array.isArray(currentTags) ? currentTags : [currentTags];
-    
-    // Update local state immediately
-    let newTags;
-    
-    // If value is already an array, use it directly (for verified button)
-    if (Array.isArray(value)) {
-      newTags = value;
-    } else if (value === '') {
-      // Remove plus/delta but keep star and verified
-      newTags = currentArray.filter(t => t === 'star' || t === 'verified');
-    } else {
-      // Replace plus/delta but keep star and verified
-      newTags = currentArray.filter(t => t === 'star' || t === 'verified');
-      newTags.push(value);
-    }
+    // Value is always an array of tag keys for multi-select
+    const newTags = Array.isArray(value) ? value : [value].filter(v => v !== '');
     
     setAnnotations(prev => ({
       ...prev,
@@ -507,18 +522,18 @@ function App() {
     await updateAirtableTags(uniqueId, newTags);
   };
 
-  // Handle star toggle
-  const handleStarToggle = async (uniqueId) => {
+  // Handle tag toggle (for any individual tag)
+  const handleTagToggle = async (uniqueId, tagKey) => {
     const currentTags = annotations[uniqueId] || [];
     const currentArray = Array.isArray(currentTags) ? currentTags : [currentTags];
     
     let newTags;
-    if (currentArray.includes('star')) {
-      // Remove star
-      newTags = currentArray.filter(t => t !== 'star');
+    if (currentArray.includes(tagKey)) {
+      // Remove tag
+      newTags = currentArray.filter(t => t !== tagKey);
     } else {
-      // Add star
-      newTags = [...currentArray, 'star'];
+      // Add tag
+      newTags = [...currentArray, tagKey];
     }
     
     setAnnotations(prev => ({
@@ -527,6 +542,11 @@ function App() {
     }));
 
     await updateAirtableTags(uniqueId, newTags);
+  };
+  
+  // Legacy star toggle for backwards compatibility
+  const handleStarToggle = async (uniqueId) => {
+    await handleTagToggle(uniqueId, 'star');
   };
 
   // Update Airtable tags
@@ -552,10 +572,12 @@ function App() {
     
     try {
       const tagsToSet = [];
-      newTags.forEach(tag => {
-        if (tag === 'plus' && tagRecordIds.plus) tagsToSet.push(tagRecordIds.plus);
-        if (tag === 'delta' && tagRecordIds.delta) tagsToSet.push(tagRecordIds.delta);
-        if (tag === 'star' && tagRecordIds.star) tagsToSet.push(tagRecordIds.star);
+      newTags.forEach(tagKey => {
+        // Look up the record ID for this tag key
+        const recordId = tagRecordIds[tagKey];
+        if (recordId) {
+          tagsToSet.push(recordId);
+        }
       });
 
       await base(commentsTable).update(commentRecord.recordId, {
@@ -575,6 +597,19 @@ function App() {
   // Show password protection if not authenticated
   if (!isAuthenticated) {
     return <PasswordProtection onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
+
+  // Show sensemaker selection after authentication but before main interface
+  if (!sensemakerSelected && !loading && sensemakers.length > 0) {
+    return (
+      <SensemakerSelection 
+        sensemakers={sensemakers} 
+        onSensemakerSelected={(sensemaker) => {
+          setCurrentSensemaker(sensemaker);
+          setSensemakerSelected(true);
+        }} 
+      />
+    );
   }
 
   if (loading) {
@@ -649,6 +684,8 @@ function App() {
             annotations={annotations}
             handleAnnotationChange={handleAnnotationChange}
             handleStarToggle={handleStarToggle}
+            handleTagToggle={handleTagToggle}
+            tagOptions={tagOptions}
             departmentMap={departmentMap}
             insights={insights}
             commentsRecords={commentsRecords}

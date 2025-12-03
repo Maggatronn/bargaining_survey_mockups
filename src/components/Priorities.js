@@ -1,37 +1,18 @@
 import React from 'react';
 
-function Priorities({ filteredData, onCreatePointer, selectedRespondent, commentsRecords }) {
+function Priorities({ filteredData, onCreatePointer }) {
   // Parse and count priorities from multi-select field
   const getPrioritiesData = () => {
     const priorityCounts = {};
-
-    // Filter data by respondent if selected
-    let dataToProcess = filteredData;
-    if (selectedRespondent && selectedRespondent !== 'All' && commentsRecords) {
-      // Find the comment record(s) that match this respondent
-      const matchingCommentIds = Object.keys(commentsRecords).filter(uniqueId => {
-        const comment = commentsRecords[uniqueId];
-        const preferredName = comment.preferredName || '';
-        const mitEmail = comment.mitEmail || '';
-        const identifier = preferredName && mitEmail 
-          ? `${preferredName} | ${mitEmail}`
-          : preferredName || mitEmail;
-        return identifier === selectedRespondent;
-      });
-      
-      // Get the individual IDs from matching comments
-      const matchingIndividualIds = matchingCommentIds
-        .map(uniqueId => commentsRecords[uniqueId].individual)
-        .filter(Boolean);
-      
-      // Filter survey responses by individual ID
-      dataToProcess = filteredData.filter(item => 
-        matchingIndividualIds.includes(item.ID)
-      );
+    
+    // Debug: log first item's fields to help identify correct field name
+    if (filteredData.length > 0) {
+      console.log('Available fields in survey data:', Object.keys(filteredData[0]));
     }
     
-    dataToProcess.forEach(item => {
-      const priorities = item['Top Three Priorities'];
+    filteredData.forEach(item => {
+      // Try multiple possible field names for priorities
+      const priorities = item['Top Three Priorities'] || item['Priorities'] || item['priorities'];
       
       // Check if priorities is an array (multi-select field from Airtable)
       if (Array.isArray(priorities)) {
@@ -47,6 +28,13 @@ function Priorities({ filteredData, onCreatePointer, selectedRespondent, comment
             }
           }
         });
+      } else if (typeof priorities === 'string' && priorities.trim().length > 0) {
+        // Handle single string value
+        if (priorityCounts[priorities]) {
+          priorityCounts[priorities]++;
+        } else {
+          priorityCounts[priorities] = 1;
+        }
       }
     });
     
@@ -71,7 +59,7 @@ function Priorities({ filteredData, onCreatePointer, selectedRespondent, comment
   const handleDownload = () => {
     const targetElement = document.querySelector('.priorities-histogram');
     if (!targetElement) {
-      alert('Could not find priorities histogram to download');
+      alert('Could not find visualization to download');
       return;
     }
     

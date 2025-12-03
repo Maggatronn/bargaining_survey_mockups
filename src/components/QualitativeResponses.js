@@ -7,6 +7,8 @@ function QualitativeResponses({
   annotations,
   handleAnnotationChange,
   handleStarToggle,
+  handleTagToggle,
+  tagOptions = [],
   departmentMap,
   insights,
   commentsRecords,
@@ -106,6 +108,20 @@ function QualitativeResponses({
   const [editingAnnotation, setEditingAnnotation] = React.useState(null);
   const [annotationText, setAnnotationText] = React.useState('');
   const [expandedAnnotations, setExpandedAnnotations] = React.useState({});
+  
+  // State for tag dropdown
+  const [openTagDropdown, setOpenTagDropdown] = React.useState(null);
+  
+  // Click outside handler to close dropdown
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (openTagDropdown && !e.target.closest('.tag-dropdown-container')) {
+        setOpenTagDropdown(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openTagDropdown]);
   
   // Helper function to get record ID for a comment
   const getCommentRecordId = (uniqueId) => {
@@ -321,12 +337,12 @@ function QualitativeResponses({
       const tagArray = Array.isArray(annotation) ? annotation : [annotation];
       const hasAnnotations = commentAnnotations[response.uniqueId] && commentAnnotations[response.uniqueId].length > 0;
       
-      if (selectedTag === 'plus' && !tagArray.includes('plus')) return false;
-      if (selectedTag === 'delta' && !tagArray.includes('delta')) return false;
-      if (selectedTag === 'star' && !tagArray.includes('star')) return false;
-      if (selectedTag === 'verified' && !tagArray.includes('verified')) return false;
       if (selectedTag === 'annotated' && !hasAnnotations) return false;
-      if (selectedTag === 'untagged' && tagArray.length > 0) return false;
+      else if (selectedTag === 'untagged' && tagArray.length > 0) return false;
+      else if (selectedTag !== 'annotated' && selectedTag !== 'untagged') {
+        // Check if the comment has the selected tag
+        if (!tagArray.includes(selectedTag)) return false;
+      }
     }
     
     // Apply local insight filter
@@ -571,8 +587,8 @@ function QualitativeResponses({
               onChange={(e) => setSelectedIssue(e.target.value)}
               className="issue-select"
             >
-              {allIssues.map(issue => (
-                <option key={issue} value={issue} className={`issue-option issue-${issue.replace(' ', '-')}`}>
+              {allIssues.map((issue, index) => (
+                <option key={`issue-${index}`} value={issue} className={`issue-option issue-${issue.replace(' ', '-')}`}>
                   {issue}
                 </option>
               ))}
@@ -583,10 +599,11 @@ function QualitativeResponses({
             <label>Tag:</label>
             <select value={selectedTag} onChange={(e) => setSelectedTag(e.target.value)}>
               <option value="All">All</option>
-              <option value="plus">➕ Plus</option>
-              <option value="delta">🔺 Delta</option>
-              <option value="star">⭐ Star</option>
-              <option value="verified">✅ Verified</option>
+              {tagOptions.map(tag => (
+                <option key={tag.key} value={tag.key}>
+                  {tag.emoji} {tag.title}
+                </option>
+              ))}
               <option value="annotated">💭 Annotated</option>
               <option value="untagged">— Untagged</option>
             </select>
@@ -714,11 +731,9 @@ function QualitativeResponses({
         {displayedResponses.map((response, index) => {
           const responseTags = annotations[response.uniqueId] || [];
           const tagArray = Array.isArray(responseTags) ? responseTags : [responseTags];
-          const plusDeltaTag = tagArray.find(t => t === 'plus' || t === 'delta') || '';
-          const isStarred = tagArray.includes('star');
-          const isVerified = tagArray.includes('verified');
           const commentInsights = getInsightsForComment(response.uniqueId);
           const isCited = commentInsights.length > 0;
+          const isTagDropdownOpen = openTagDropdown === response.uniqueId;
           
           // Get department name from ID if available
           let departmentName = response.department;
@@ -734,6 +749,11 @@ function QualitativeResponses({
             }
           }
           
+          // Get selected tag details for display
+          const selectedTagDetails = tagArray
+            .map(tagKey => tagOptions.find(t => t.key === tagKey))
+            .filter(Boolean);
+          
           return (
           <div 
             key={index} 
@@ -745,6 +765,22 @@ function QualitativeResponses({
             >
               "{response.text}"
             </div>
+            
+            {/* Display selected tags */}
+            {selectedTagDetails.length > 0 && (
+              <div className="selected-tags-display">
+                {selectedTagDetails.map(tag => (
+                  <span 
+                    key={tag.key} 
+                    className="selected-tag-badge"
+                    onClick={() => handleTagToggle(response.uniqueId, tag.key)}
+                    title={`Click to remove: ${tag.title}`}
+                  >
+                    {tag.emoji} {tag.title}
+                  </span>
+                ))}
+              </div>
+            )}
             
             <div 
               className="qual-footer"
@@ -797,36 +833,47 @@ function QualitativeResponses({
                     )}
                   </div>
                 )}
-                <button 
-                  className={`star-button ${isStarred ? 'starred' : ''}`}
-                  onClick={() => handleStarToggle(response.uniqueId)}
-                  title={isStarred ? 'Remove star' : 'Add star'}
-                >
-                  {isStarred ? '⭐' : '☆'}
-                </button>
-                <button 
-                  className={`verified-button ${isVerified ? 'verified' : ''}`}
-                  onClick={() => {
-                    const currentTags = annotations[response.uniqueId] || [];
-                    const tagArray = Array.isArray(currentTags) ? currentTags : [currentTags];
-                    const newTags = isVerified 
-                      ? tagArray.filter(t => t !== 'verified')
-                      : [...tagArray.filter(t => t !== ''), 'verified'];
-                    handleAnnotationChange(response.uniqueId, newTags);
-                  }}
-                  title={isVerified ? 'Remove verified' : 'Mark as verified'}
-                >
-                  ✅
-                </button>
-                <select 
-                  className="annotation-dropdown"
-                  value={plusDeltaTag}
-                  onChange={(e) => handleAnnotationChange(response.uniqueId, e.target.value)}
-                >
-                  <option value="">—</option>
-                  <option value="plus">➕</option>
-                  <option value="delta">🔺</option>
-                </select>
+                
+                {/* Multi-select tag dropdown */}
+                <div className="tag-dropdown-container">
+                  <button
+                    className={`tag-dropdown-trigger ${tagArray.length > 0 ? 'has-tags' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenTagDropdown(isTagDropdownOpen ? null : response.uniqueId);
+                    }}
+                    title="Add/remove tags"
+                  >
+                    🏷️ {tagArray.length > 0 ? `(${tagArray.length})` : ''}
+                  </button>
+                  
+                  {isTagDropdownOpen && (
+                    <div className="tag-dropdown-menu">
+                      <div className="tag-dropdown-header">Select Tags</div>
+                      {tagOptions.map(tag => (
+                        <label 
+                          key={tag.key} 
+                          className={`tag-dropdown-option ${tagArray.includes(tag.key) ? 'selected' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={tagArray.includes(tag.key)}
+                            onChange={() => handleTagToggle(response.uniqueId, tag.key)}
+                          />
+                          <span className="tag-option-emoji">{tag.emoji}</span>
+                          <span className="tag-option-title">{tag.title}</span>
+                        </label>
+                      ))}
+                      <button 
+                        className="tag-dropdown-close"
+                        onClick={() => setOpenTagDropdown(null)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
                 {currentSensemaker && (
                   <button
                     className="annotation-button"

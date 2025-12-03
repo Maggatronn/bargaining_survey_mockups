@@ -1,36 +1,11 @@
 import React from 'react';
 
-function Stipend({ filteredData, onCreatePointer, selectedRespondent, commentsRecords }) {
+function Stipend({ filteredData, onCreatePointer }) {
   // Parse and count housing costs
   const getStipendData = () => {
     const costCounts = {};
     
-    // Filter data by respondent if selected
-    let dataToProcess = filteredData;
-    if (selectedRespondent && selectedRespondent !== 'All' && commentsRecords) {
-      // Find the comment record(s) that match this respondent
-      const matchingCommentIds = Object.keys(commentsRecords).filter(uniqueId => {
-        const comment = commentsRecords[uniqueId];
-        const preferredName = comment.preferredName || '';
-        const mitEmail = comment.mitEmail || '';
-        const identifier = preferredName && mitEmail 
-          ? `${preferredName} | ${mitEmail}`
-          : preferredName || mitEmail;
-        return identifier === selectedRespondent;
-      });
-      
-      // Get the individual IDs from matching comments
-      const matchingIndividualIds = matchingCommentIds
-        .map(uniqueId => commentsRecords[uniqueId].individual)
-        .filter(Boolean);
-      
-      // Filter survey responses by individual ID
-      dataToProcess = filteredData.filter(item => 
-        matchingIndividualIds.includes(item.ID)
-      );
-    }
-    
-    dataToProcess.forEach(item => {
+    filteredData.forEach(item => {
       if (item['Salary increase range'] && item['Salary increase range'].toString().trim()) {
         const cost = item['Salary increase range'].toString().trim();
         
@@ -70,7 +45,7 @@ function Stipend({ filteredData, onCreatePointer, selectedRespondent, commentsRe
   const handleDownload = () => {
     const targetElement = document.querySelector('.stipend-histogram');
     if (!targetElement) {
-      alert('Could not find stipend histogram to download');
+      alert('Could not find visualization to download');
       return;
     }
     

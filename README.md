@@ -67,3 +67,4 @@ data-explorer/
 
 The `.env.local` file is included in `.gitignore` to keep your API keys secure. Never commit this file to version control.
 
+

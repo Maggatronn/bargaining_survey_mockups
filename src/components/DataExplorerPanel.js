@@ -10,6 +10,8 @@ function DataExplorerPanel({
   annotations, 
   handleAnnotationChange, 
   handleStarToggle,
+  handleTagToggle,
+  tagOptions,
   departmentMap,
   insights,
   commentsRecords,
@@ -85,6 +87,8 @@ function DataExplorerPanel({
             annotations={annotations}
             handleAnnotationChange={handleAnnotationChange}
             handleStarToggle={handleStarToggle}
+            handleTagToggle={handleTagToggle}
+            tagOptions={tagOptions}
             departmentMap={departmentMap}
             insights={insights}
             commentsRecords={commentsRecords}

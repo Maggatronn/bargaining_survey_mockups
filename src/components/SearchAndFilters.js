@@ -21,8 +21,8 @@ function SearchAndFilters({
         <div className="filter-group">
           <label>Department:</label>
           <select value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)}>
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept || 'Unknown'}</option>
+            {departments.map((dept, index) => (
+              <option key={`dept-${index}`} value={dept}>{dept || 'Unknown'}</option>
             ))}
           </select>
         </div>
@@ -51,11 +51,17 @@ function SearchAndFilters({
             <select 
               value={currentSensemaker?.id || ''}
               onChange={(e) => {
-                const selected = sensemakers.find(s => s.id === e.target.value);
-                setCurrentSensemaker(selected);
-                sessionStorage.setItem('currentSensemaker', e.target.value);
+                if (e.target.value === '') {
+                  setCurrentSensemaker(null);
+                  sessionStorage.removeItem('currentSensemaker');
+                } else {
+                  const selected = sensemakers.find(s => s.id === e.target.value);
+                  setCurrentSensemaker(selected);
+                  sessionStorage.setItem('currentSensemaker', e.target.value);
+                }
               }}
             >
+              <option value="">None</option>
               {sensemakers.map(sm => (
                 <option key={sm.id} value={sm.id}>{sm.name}</option>
               ))}
@@ -70,8 +76,8 @@ function SearchAndFilters({
             onChange={(e) => setSelectedRespondent(e.target.value)}
             className="respondent-select"
           >
-            {respondents.map(resp => (
-              <option key={resp} value={resp}>{resp}</option>
+            {respondents.map((resp, index) => (
+              <option key={`resp-${index}`} value={resp}>{resp}</option>
             ))}
           </select>
         </div>

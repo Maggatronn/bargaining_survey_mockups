@@ -177,7 +177,7 @@ function InsightsPanel({ data, commentsRecords, annotations, questions, onNaviga
         .select()
         .eachPage((pageRecords, fetchNextPage) => {
           pageRecords.forEach(record => {
-            const sensemakerName = record.fields['Full Name'] || 'Unknown';
+            const sensemakerName = record.fields['Preferred Name'] || record.fields['Full Name'] || 'Unknown';
             records.push({
               id: record.id,
               name: sensemakerName

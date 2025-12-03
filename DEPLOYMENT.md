@@ -77,3 +77,4 @@ If deployment fails:
 3. Make sure the homepage in package.json is correct
 4. Ensure GitHub Pages is enabled with "GitHub Actions" as the source
 
+
