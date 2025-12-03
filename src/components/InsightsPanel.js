@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Airtable from 'airtable';
 import { getQuestionColorClass } from '../utils/colorUtils';
 
-function InsightsPanel({ data, commentsRecords, annotations, questions, onNavigateToPointer, pendingPointer, onPointerUsed }) {
+function InsightsPanel({ data, commentsRecords, annotations, questions, onNavigateToPointer, pendingPointer, onPointerUsed, currentSensemaker }) {
   const [insights, setInsights] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [sensemakers, setSensemakers] = useState([]);
@@ -301,7 +301,12 @@ function InsightsPanel({ data, commentsRecords, annotations, questions, onNaviga
     setSelectedDepartments([]);
     setSelectedComments([]);
     setSelectedPointers([]);
-    setSelectedSensemakers([]);
+    // Auto-add the current sensemaker if one is selected
+    if (currentSensemaker && currentSensemaker.id) {
+      setSelectedSensemakers([currentSensemaker.id]);
+    } else {
+      setSelectedSensemakers([]);
+    }
   };
 
   const handleEdit = (insight) => {

@@ -669,6 +669,7 @@ function App() {
             onNavigateToPointer={handleNavigateToPointer}
             pendingPointer={pendingPointer}
             onPointerUsed={() => setPendingPointer(null)}
+            currentSensemaker={currentSensemaker}
           />
           </div>
 
