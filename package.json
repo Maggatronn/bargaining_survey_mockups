@@ -2,6 +2,7 @@
   "name": "data-explorer",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://maggatronn.github.io/bargaining_survey_mockups",
   "dependencies": {
     "airtable": "^0.12.2",
     "html2canvas": "^1.4.1",
