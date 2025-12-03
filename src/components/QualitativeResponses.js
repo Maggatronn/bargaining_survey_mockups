@@ -798,7 +798,9 @@ function QualitativeResponses({
                     setShowIndividualInfo(showIndividualInfo === response.uniqueId ? null : response.uniqueId);
                   }}
                   title="Show individual information"
-                ></button>
+                >
+                  <span className="info-icon">i</span>
+                </button>
                 <span className={`tag-issue ${getQuestionColorClass(response.questionId, response.economic)}`}>
                   {response.issue}
                 </span>
@@ -844,7 +846,7 @@ function QualitativeResponses({
                     }}
                     title="Add/remove tags"
                   >
-                    🏷️ {tagArray.length > 0 ? `(${tagArray.length})` : ''}
+                    🏷️
                   </button>
                   
                   {isTagDropdownOpen && (

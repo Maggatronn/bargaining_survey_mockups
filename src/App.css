@@ -321,27 +321,38 @@ body {
 
 .info-button {
   background: transparent;
-  border: 1px solid #d0ccc7;
-  font-size: 0.75rem;
+  border: none;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 3px;
+  padding: 0;
   transition: all 0.2s ease;
-  color: #6b6661;
-  font-weight: 500;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 .info-button:hover {
-  background: #f5f3f0;
-  border-color: #8b8680;
-  color: #2a2a2a;
+  opacity: 0.7;
 }
 
-.info-button::before {
-  content: 'ℹ️';
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid #8b8680;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  font-style: italic;
+  font-family: Georgia, serif;
+  color: #8b8680;
+  transition: all 0.2s ease;
+}
+
+.info-button:hover .info-icon {
+  border-color: #2a2a2a;
+  color: #2a2a2a;
 }
 
 .verified-button {
