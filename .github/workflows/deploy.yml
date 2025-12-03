@@ -18,6 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: airtable_keys_password
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
