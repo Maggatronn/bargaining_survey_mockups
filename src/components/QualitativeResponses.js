@@ -586,6 +586,14 @@ function QualitativeResponses({
         </div>
         
         <div className="qual-filters">
+          <button 
+            className="shuffle-button"
+            onClick={handleShuffle}
+            title="Shuffle comments randomly"
+          >
+            🔀 Shuffle
+          </button>
+          
           <div className="filter-group">
             <label>Question:</label>
             <select 
@@ -628,14 +636,6 @@ function QualitativeResponses({
               ))}
             </select>
           </div>
-          
-          <button 
-            className="shuffle-button"
-            onClick={handleShuffle}
-            title="Shuffle comments randomly"
-          >
-            🔀 Shuffle
-          </button>
           
           <div className="qual-count">
             {filteredQualResponses.length} of {qualResponses.length}
@@ -810,12 +810,11 @@ function QualitativeResponses({
                 <span className={`tag-issue ${getQuestionColorClass(response.questionId, response.economic)}`}>
                   {response.issue}
                 </span>
-                <div className="qual-meta">
-                  {response.rating !== 'N/A' && (
+                {response.rating !== 'N/A' && (
+                  <div className="qual-meta">
                     <span className="meta-text">Rating: {response.rating}</span>
-                  )}
-                  <span className="meta-text">{departmentName}</span>
-                </div>
+                  </div>
+                )}
               </div>
               <div className="qual-actions">
                 {isCited && (
@@ -910,8 +909,8 @@ function QualitativeResponses({
                   </button>
                 )}
                 
-                {/* Mobile lightbulb - add to insight dropdown */}
-                <div className={`insight-add-dropdown-container mobile-only ${openInsightDropdown === response.uniqueId ? 'is-open' : ''}`}>
+                {/* Lightbulb - add to insight dropdown */}
+                <div className={`insight-add-dropdown-container ${openInsightDropdown === response.uniqueId ? 'is-open' : ''}`}>
                   <button
                     className={`insight-add-trigger ${isCited ? 'is-cited' : ''}`}
                     onClick={(e) => {
@@ -994,15 +993,20 @@ function QualitativeResponses({
               
               return (
                 <div className="individual-info">
-                  {(preferredName || mitEmail) ? (
-                    <div className="individual-info-content">
-                      {preferredName && <span className="individual-name">{preferredName}</span>}
-                      {preferredName && mitEmail && <span className="individual-separator"> | </span>}
-                      {mitEmail && <a href={`mailto:${mitEmail}`} className="individual-email">{mitEmail}</a>}
-                    </div>
-                  ) : (
-                    <div className="individual-info-row">No individual information available</div>
-                  )}
+                  <div className="individual-info-content">
+                    {departmentName && (
+                      <>
+                        <span className="individual-department">{departmentName}</span>
+                        {(preferredName || mitEmail) && <span className="individual-separator"> | </span>}
+                      </>
+                    )}
+                    {preferredName && <span className="individual-name">{preferredName}</span>}
+                    {preferredName && mitEmail && <span className="individual-separator"> | </span>}
+                    {mitEmail && <a href={`mailto:${mitEmail}`} className="individual-email">{mitEmail}</a>}
+                    {!departmentName && !preferredName && !mitEmail && (
+                      <span className="individual-none">No additional information available</span>
+                    )}
+                  </div>
                 </div>
               );
             })()}

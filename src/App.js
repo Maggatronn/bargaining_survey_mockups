@@ -34,6 +34,7 @@ function App() {
   const [currentSensemaker, setCurrentSensemaker] = useState(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileActiveView, setMobileActiveView] = useState('explorer'); // 'insights' or 'explorer'
+  const [showInfoModal, setShowInfoModal] = useState(false); // Info popup
 
   // Check if already authenticated in this session
   useEffect(() => {
@@ -681,11 +682,58 @@ function App() {
       <header className="App-header">
         <div className="header-content">
           <div>
-        <h1>GSU Organizers Data Explorer</h1>
-        <p className="subtitle">Explore and analyze organizer data</p>
+            <h1>GSU Organizers Data Explorer</h1>
+            <p className="subtitle">Explore and analyze organizer data</p>
           </div>
-            </div>
+          <button 
+            className="header-info-button"
+            onClick={() => setShowInfoModal(true)}
+            title="About this app"
+          >
+            <span className="info-icon">i</span>
+          </button>
+        </div>
       </header>
+
+      {/* Info Modal */}
+      {showInfoModal && (
+        <div className="info-modal-overlay" onClick={() => setShowInfoModal(false)}>
+          <div className="info-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="info-modal-close" onClick={() => setShowInfoModal(false)}>×</button>
+            <h2>About GSU Data Explorer</h2>
+            <div className="info-modal-content">
+              <p><strong>Welcome!</strong> This tool helps GSU organizers explore and analyze bargaining survey data.</p>
+              
+              <h3>Key Features:</h3>
+              <ul>
+                <li><strong>Heatmap:</strong> See rating distributions across issues. Click headers to sort.</li>
+                <li><strong>Comments:</strong> Browse qualitative responses with filtering and tagging.</li>
+                <li><strong>Priorities:</strong> View what members prioritize most.</li>
+                <li><strong>Stipend:</strong> Explore stipend-related responses.</li>
+                <li><strong>Insights:</strong> Create and organize insights by dragging comments.</li>
+              </ul>
+
+              <h3>Tips:</h3>
+              <ul>
+                <li>Use filters to narrow down by department, issue type, or respondent.</li>
+                <li>Tag comments with emojis for easy categorization.</li>
+                <li>Create pointers (🔗) to save specific views within insights.</li>
+                <li>Click the 💡 to add comments to insights.</li>
+              </ul>
+
+              <p className="info-modal-link">
+                <a 
+                  href="https://docs.google.com/document/d/1xO8aYAXo7GcsmaorVOltfqJXudkbIYKR7lG29Df1vNU/edit?usp=sharing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  📄 View Full Documentation
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Search + Filter Button + Pointer Button */}
       <div className="mobile-search-bar">
