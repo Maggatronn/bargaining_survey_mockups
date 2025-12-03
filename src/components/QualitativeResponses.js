@@ -1,6 +1,6 @@
 import React from 'react';
 import Airtable from 'airtable';
-import { getQuestionColor, getQuestionColorClass } from '../utils/colorUtils';
+import { getQuestionColor, getQuestionColorClass, isOutlinedStyle } from '../utils/colorUtils';
 
 function QualitativeResponses({ 
   filteredData,
@@ -678,6 +678,15 @@ function QualitativeResponses({
           const questionId = matchingResponse?.questionId || '';
           const economic = matchingResponse?.economic || 'Unknown';
           const themeColor = getQuestionColor(questionId, economic);
+          const isNonEconomic = isOutlinedStyle(economic);
+          
+          // Convert hex to rgba for 50% opacity stripes
+          const hexToRgba = (hex, alpha) => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          };
           
           // Create abbreviated label (first 3 words or first 15 chars)
           const words = item.theme.split(' ');
@@ -707,10 +716,14 @@ function QualitativeResponses({
                 )}
                 {item.untagged > 0 && (
                   <div 
-                    className="histogram-segment-vertical histogram-theme-vertical"
+                    className={`histogram-segment-vertical histogram-theme-vertical ${isNonEconomic ? 'striped' : ''}`}
                     style={{ 
                       height: `${untaggedPercent}%`,
-                      backgroundColor: themeColor
+                      background: isNonEconomic 
+                          ? `repeating-linear-gradient(45deg, ${hexToRgba(themeColor, 0.8)}, ${hexToRgba(themeColor, 0.8)} 4px, ${themeColor} 4px, ${themeColor} 8px)`
+                          : themeColor,
+                      border: isNonEconomic ? `2px solid ${themeColor}` : 'none',
+                      boxSizing: 'border-box'
                     }}
                   />
                 )}
@@ -757,7 +770,7 @@ function QualitativeResponses({
           return (
           <div 
             key={index} 
-            className="qual-card"
+            className={`qual-card ${isTagDropdownOpen ? 'has-open-dropdown' : ''}`}
           >
             <div 
               className="qual-text"
@@ -766,21 +779,6 @@ function QualitativeResponses({
               "{response.text}"
             </div>
             
-            {/* Display selected tags - emoji only */}
-            {selectedTagDetails.length > 0 && (
-              <div className="selected-tags-display">
-                {selectedTagDetails.map(tag => (
-                  <span 
-                    key={tag.key} 
-                    className="selected-tag-badge"
-                    onClick={() => handleTagToggle(response.uniqueId, tag.key)}
-                    title={`${tag.title} - Click to remove`}
-                  >
-                    {tag.emoji}
-                  </span>
-                ))}
-              </div>
-            )}
             
             <div 
               className="qual-footer"
@@ -837,7 +835,7 @@ function QualitativeResponses({
                 )}
                 
                 {/* Multi-select tag dropdown */}
-                <div className="tag-dropdown-container">
+                <div className={`tag-dropdown-container ${isTagDropdownOpen ? 'is-open' : ''}`}>
                   <button
                     className={`tag-dropdown-trigger ${tagArray.length > 0 ? 'has-tags' : ''}`}
                     onClick={(e) => {
@@ -846,7 +844,17 @@ function QualitativeResponses({
                     }}
                     title="Add/remove tags"
                   >
-                    🏷️
+                    {selectedTagDetails.length > 0 ? (
+                      <span className="selected-tags-inline">
+                        {selectedTagDetails.map(tag => (
+                          <span key={tag.key} className="selected-tag-emoji" title={tag.title}>
+                            {tag.emoji}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="tag-icon-default">🏷️</span>
+                    )}
                   </button>
                   
                   {isTagDropdownOpen && (

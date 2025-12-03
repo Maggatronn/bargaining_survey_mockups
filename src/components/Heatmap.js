@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getQuestionColor } from '../utils/colorUtils';
+import { getQuestionColor, isOutlinedStyle } from '../utils/colorUtils';
 
 function Heatmap({ filteredData, onCreatePointer, questions, selectedEconomic, selectedRespondent, commentsRecords, activePointer }) {
   const [sortColumn, setSortColumn] = useState(null);
@@ -353,13 +353,31 @@ function Heatmap({ filteredData, onCreatePointer, questions, selectedEconomic, s
           {heatmapData.map((row, index) => {
             // Get color for this question
             const labelColor = getQuestionColor(row.questionId, row.economic);
+            const isNonEconomic = isOutlinedStyle(row.economic);
+            
+            // Convert hex to rgba for 50% opacity stripes
+            const hexToRgba = (hex, alpha) => {
+              const r = parseInt(hex.slice(1, 3), 16);
+              const g = parseInt(hex.slice(3, 5), 16);
+              const b = parseInt(hex.slice(5, 7), 16);
+              return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            };
+            
+            // Create diagonal stripe pattern for non-economic (alternating 80% and 100% opacity, 4px stripes)
+            const stripeBackground = isNonEconomic 
+              ? `repeating-linear-gradient(45deg, ${hexToRgba(labelColor, 0.8)}, ${hexToRgba(labelColor, 0.8)} 4px, ${labelColor} 4px, ${labelColor} 8px)`
+              : labelColor;
             
             return (
             <React.Fragment key={index}>
               <div className="heatmap-cell row-header">
                 <span 
                   className="tag-issue"
-                  style={{ backgroundColor: labelColor }}
+                  style={{
+                    background: stripeBackground,
+                    border: isNonEconomic ? `2px solid ${labelColor}` : 'none',
+                    color: '#ffffff'
+                  }}
                 >
                   {row.issue}
                 </span>

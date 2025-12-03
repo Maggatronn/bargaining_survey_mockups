@@ -454,7 +454,8 @@ function App() {
                 columnHeader: record.fields['Column Header'],
                 nickname: record.fields.Nickname,
                 type: type,
-                economic: economic // 'Economic' or 'Non-Economic'
+                economic: economic, // 'Economic' or 'Non-Economic'
+                priorityMapping: record.fields['Priority Mapping'] || null // Maps to priorities
               });
             });
             fetchNextPage();

@@ -1,6 +1,29 @@
 import React from 'react';
+import { getQuestionColor, isOutlinedStyle } from '../utils/colorUtils';
 
-function Priorities({ filteredData, onCreatePointer }) {
+function Priorities({ filteredData, onCreatePointer, questions = [] }) {
+  // Create a mapping from priority name to question info
+  const getPriorityToQuestionMap = () => {
+    const map = {};
+    questions.forEach(q => {
+      if (q.priorityMapping) {
+        // priorityMapping could be a string or array
+        const mappings = Array.isArray(q.priorityMapping) ? q.priorityMapping : [q.priorityMapping];
+        mappings.forEach(priorityName => {
+          if (priorityName) {
+            map[priorityName.toLowerCase().trim()] = {
+              questionId: q.id,
+              economic: q.economic
+            };
+          }
+        });
+      }
+    });
+    return map;
+  };
+  
+  const priorityToQuestion = getPriorityToQuestionMap();
+  
   // Parse and count priorities from multi-select field
   const getPrioritiesData = () => {
     const priorityCounts = {};
@@ -41,7 +64,16 @@ function Priorities({ filteredData, onCreatePointer }) {
     // Convert to array and sort by count (descending)
     const sortedPriorities = Object.entries(priorityCounts)
       .filter(([priority]) => priority && priority.trim().length > 0)
-      .map(([priority, count]) => ({ priority, count }))
+      .map(([priority, count]) => {
+        // Look up the question mapping for this priority
+        const questionInfo = priorityToQuestion[priority.toLowerCase().trim()];
+        return { 
+          priority, 
+          count,
+          questionId: questionInfo?.questionId || null,
+          economic: questionInfo?.economic || null
+        };
+      })
       .sort((a, b) => b.count - a.count);
     
     return sortedPriorities;
@@ -137,6 +169,32 @@ function Priorities({ filteredData, onCreatePointer }) {
             {prioritiesData.map((item, index) => {
               const barWidth = (item.count / maxCount) * 100;
               
+              // Get color from mapped question, or use default
+              const hasMapping = item.questionId && item.economic;
+              const barColor = hasMapping 
+                ? getQuestionColor(item.questionId, item.economic)
+                : '#667eea'; // Default blue-purple
+              const isNonEconomic = hasMapping && isOutlinedStyle(item.economic);
+              
+              // Convert hex to rgba for 50% opacity stripes
+              const hexToRgba = (hex, alpha) => {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+              };
+              
+              // Create diagonal stripe pattern for non-economic (alternating 80% and 100% opacity, 5px stripes)
+              const stripeBackground = isNonEconomic 
+                ? `repeating-linear-gradient(
+                    45deg,
+                    ${hexToRgba(barColor, 0.8)},
+                    ${hexToRgba(barColor, 0.8)} 5px,
+                    ${barColor} 5px,
+                    ${barColor} 10px
+                  )`
+                : barColor;
+              
               return (
                 <div key={index} className="priority-bar-container">
                   <div className="priority-label" title={item.priority}>
@@ -144,8 +202,13 @@ function Priorities({ filteredData, onCreatePointer }) {
                   </div>
                   <div className="priority-bar-wrapper">
                     <div 
-                      className="priority-bar"
-                      style={{ width: `${barWidth}%` }}
+                      className={`priority-bar ${isNonEconomic ? 'striped' : ''}`}
+                      style={{ 
+                        width: `${barWidth}%`,
+                        background: stripeBackground,
+                        border: isNonEconomic ? `2px solid ${barColor}` : 'none',
+                        color: '#ffffff'
+                      }}
                     >
                       <span className="priority-count">{item.count}</span>
                     </div>

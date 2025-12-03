@@ -1513,26 +1513,26 @@ body {
 
 /* Economic vs Non-Economic color schemes for edit mode inline citations */
 .inline-citation-edit.economic-color-0 { background: #667eea; color: #ffffff; }
-.inline-citation-edit.economic-color-1 { background: #4299e1; color: #ffffff; }
-.inline-citation-edit.economic-color-2 { background: #38b2ac; color: #ffffff; }
-.inline-citation-edit.economic-color-3 { background: #5a67d8; color: #ffffff; }
-.inline-citation-edit.economic-color-4 { background: #3182ce; color: #ffffff; }
-.inline-citation-edit.economic-color-5 { background: #319795; color: #ffffff; }
-.inline-citation-edit.economic-color-6 { background: #2c5282; color: #ffffff; }
-.inline-citation-edit.economic-color-7 { background: #2d3748; color: #ffffff; }
-.inline-citation-edit.economic-color-8 { background: #4c51bf; color: #ffffff; }
-.inline-citation-edit.economic-color-9 { background: #2b6cb0; color: #ffffff; }
+.inline-citation-edit.economic-color-1 { background: #48bb78; color: #ffffff; }
+.inline-citation-edit.economic-color-2 { background: #ed8936; color: #ffffff; }
+.inline-citation-edit.economic-color-3 { background: #f56565; color: #ffffff; }
+.inline-citation-edit.economic-color-4 { background: #9f7aea; color: #ffffff; }
+.inline-citation-edit.economic-color-5 { background: #38b2ac; color: #ffffff; }
+.inline-citation-edit.economic-color-6 { background: #ecc94b; color: #2a2a2a; }
+.inline-citation-edit.economic-color-7 { background: #ed64a6; color: #ffffff; }
+.inline-citation-edit.economic-color-8 { background: #4299e1; color: #ffffff; }
+.inline-citation-edit.economic-color-9 { background: #fc8181; color: #ffffff; }
 
-.inline-citation-edit.non-economic-color-0 { background: #f56565; color: #ffffff; }
-.inline-citation-edit.non-economic-color-1 { background: #ed8936; color: #ffffff; }
-.inline-citation-edit.non-economic-color-2 { background: #ecc94b; color: #ffffff; }
-.inline-citation-edit.non-economic-color-3 { background: #fc8181; color: #ffffff; }
-.inline-citation-edit.non-economic-color-4 { background: #f6ad55; color: #ffffff; }
-.inline-citation-edit.non-economic-color-5 { background: #ed64a6; color: #ffffff; }
-.inline-citation-edit.non-economic-color-6 { background: #e53e3e; color: #ffffff; }
-.inline-citation-edit.non-economic-color-7 { background: #dd6b20; color: #ffffff; }
-.inline-citation-edit.non-economic-color-8 { background: #d69e2e; color: #ffffff; }
-.inline-citation-edit.non-economic-color-9 { background: #d53f8c; color: #ffffff; }
+.inline-citation-edit.non-economic-color-0 { background: repeating-linear-gradient(45deg, rgba(102,126,234,0.8), rgba(102,126,234,0.8) 4px, #667eea 4px, #667eea 8px); border: 2px solid #667eea; color: #ffffff; }
+.inline-citation-edit.non-economic-color-1 { background: repeating-linear-gradient(45deg, rgba(72,187,120,0.8), rgba(72,187,120,0.8) 4px, #48bb78 4px, #48bb78 8px); border: 2px solid #48bb78; color: #ffffff; }
+.inline-citation-edit.non-economic-color-2 { background: repeating-linear-gradient(45deg, rgba(237,137,54,0.8), rgba(237,137,54,0.8) 4px, #ed8936 4px, #ed8936 8px); border: 2px solid #ed8936; color: #ffffff; }
+.inline-citation-edit.non-economic-color-3 { background: repeating-linear-gradient(45deg, rgba(245,101,101,0.8), rgba(245,101,101,0.8) 4px, #f56565 4px, #f56565 8px); border: 2px solid #f56565; color: #ffffff; }
+.inline-citation-edit.non-economic-color-4 { background: repeating-linear-gradient(45deg, rgba(159,122,234,0.8), rgba(159,122,234,0.8) 4px, #9f7aea 4px, #9f7aea 8px); border: 2px solid #9f7aea; color: #ffffff; }
+.inline-citation-edit.non-economic-color-5 { background: repeating-linear-gradient(45deg, rgba(56,178,172,0.8), rgba(56,178,172,0.8) 4px, #38b2ac 4px, #38b2ac 8px); border: 2px solid #38b2ac; color: #ffffff; }
+.inline-citation-edit.non-economic-color-6 { background: repeating-linear-gradient(45deg, rgba(214,158,46,0.8), rgba(214,158,46,0.8) 4px, #d69e2e 4px, #d69e2e 8px); border: 2px solid #d69e2e; color: #ffffff; }
+.inline-citation-edit.non-economic-color-7 { background: repeating-linear-gradient(45deg, rgba(237,100,166,0.8), rgba(237,100,166,0.8) 4px, #ed64a6 4px, #ed64a6 8px); border: 2px solid #ed64a6; color: #ffffff; }
+.inline-citation-edit.non-economic-color-8 { background: repeating-linear-gradient(45deg, rgba(66,153,225,0.8), rgba(66,153,225,0.8) 4px, #4299e1 4px, #4299e1 8px); border: 2px solid #4299e1; color: #ffffff; }
+.inline-citation-edit.non-economic-color-9 { background: repeating-linear-gradient(45deg, rgba(229,62,62,0.8), rgba(229,62,62,0.8) 4px, #e53e3e 4px, #e53e3e 8px); border: 2px solid #e53e3e; color: #ffffff; }
 
 /* Preview container */
 .insight-text-preview {
@@ -1623,26 +1623,26 @@ body {
 
 /* Economic vs Non-Economic color schemes for inline citations */
 .inline-citation.economic-color-0 { background: #667eea; }
-.inline-citation.economic-color-1 { background: #4299e1; }
-.inline-citation.economic-color-2 { background: #38b2ac; }
-.inline-citation.economic-color-3 { background: #5a67d8; }
-.inline-citation.economic-color-4 { background: #3182ce; }
-.inline-citation.economic-color-5 { background: #319795; }
-.inline-citation.economic-color-6 { background: #2c5282; }
-.inline-citation.economic-color-7 { background: #2d3748; }
-.inline-citation.economic-color-8 { background: #4c51bf; }
-.inline-citation.economic-color-9 { background: #2b6cb0; }
+.inline-citation.economic-color-1 { background: #48bb78; }
+.inline-citation.economic-color-2 { background: #ed8936; }
+.inline-citation.economic-color-3 { background: #f56565; }
+.inline-citation.economic-color-4 { background: #9f7aea; }
+.inline-citation.economic-color-5 { background: #38b2ac; }
+.inline-citation.economic-color-6 { background: #ecc94b; color: #2a2a2a; }
+.inline-citation.economic-color-7 { background: #ed64a6; }
+.inline-citation.economic-color-8 { background: #4299e1; }
+.inline-citation.economic-color-9 { background: #fc8181; }
 
-.inline-citation.non-economic-color-0 { background: #f56565; }
-.inline-citation.non-economic-color-1 { background: #ed8936; }
-.inline-citation.non-economic-color-2 { background: #ecc94b; }
-.inline-citation.non-economic-color-3 { background: #fc8181; }
-.inline-citation.non-economic-color-4 { background: #f6ad55; }
-.inline-citation.non-economic-color-5 { background: #ed64a6; }
-.inline-citation.non-economic-color-6 { background: #e53e3e; }
-.inline-citation.non-economic-color-7 { background: #dd6b20; }
-.inline-citation.non-economic-color-8 { background: #d69e2e; }
-.inline-citation.non-economic-color-9 { background: #d53f8c; }
+.inline-citation.non-economic-color-0 { background: repeating-linear-gradient(45deg, rgba(102,126,234,0.8), rgba(102,126,234,0.8) 4px, #667eea 4px, #667eea 8px); border: 2px solid #667eea; color: #ffffff; }
+.inline-citation.non-economic-color-1 { background: repeating-linear-gradient(45deg, rgba(72,187,120,0.8), rgba(72,187,120,0.8) 4px, #48bb78 4px, #48bb78 8px); border: 2px solid #48bb78; color: #ffffff; }
+.inline-citation.non-economic-color-2 { background: repeating-linear-gradient(45deg, rgba(237,137,54,0.8), rgba(237,137,54,0.8) 4px, #ed8936 4px, #ed8936 8px); border: 2px solid #ed8936; color: #ffffff; }
+.inline-citation.non-economic-color-3 { background: repeating-linear-gradient(45deg, rgba(245,101,101,0.8), rgba(245,101,101,0.8) 4px, #f56565 4px, #f56565 8px); border: 2px solid #f56565; color: #ffffff; }
+.inline-citation.non-economic-color-4 { background: repeating-linear-gradient(45deg, rgba(159,122,234,0.8), rgba(159,122,234,0.8) 4px, #9f7aea 4px, #9f7aea 8px); border: 2px solid #9f7aea; color: #ffffff; }
+.inline-citation.non-economic-color-5 { background: repeating-linear-gradient(45deg, rgba(56,178,172,0.8), rgba(56,178,172,0.8) 4px, #38b2ac 4px, #38b2ac 8px); border: 2px solid #38b2ac; color: #ffffff; }
+.inline-citation.non-economic-color-6 { background: repeating-linear-gradient(45deg, rgba(214,158,46,0.8), rgba(214,158,46,0.8) 4px, #d69e2e 4px, #d69e2e 8px); border: 2px solid #d69e2e; color: #ffffff; }
+.inline-citation.non-economic-color-7 { background: repeating-linear-gradient(45deg, rgba(237,100,166,0.8), rgba(237,100,166,0.8) 4px, #ed64a6 4px, #ed64a6 8px); border: 2px solid #ed64a6; color: #ffffff; }
+.inline-citation.non-economic-color-8 { background: repeating-linear-gradient(45deg, rgba(66,153,225,0.8), rgba(66,153,225,0.8) 4px, #4299e1 4px, #4299e1 8px); border: 2px solid #4299e1; color: #ffffff; }
+.inline-citation.non-economic-color-9 { background: repeating-linear-gradient(45deg, rgba(229,62,62,0.8), rgba(229,62,62,0.8) 4px, #e53e3e 4px, #e53e3e 8px); border: 2px solid #e53e3e; color: #ffffff; }
 
 .citation-tooltip {
   position: absolute;
@@ -2436,24 +2436,32 @@ body {
 
 .priority-bar {
   height: 100%;
-  background: linear-gradient(90deg, #2a2a2a 0%, #6b6b6b 100%);
   border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding-right: 12px;
   min-width: 45px;
-  transition: width 0.3s ease, background 0.2s ease;
+  transition: width 0.3s ease, background 0.2s ease, border 0.2s ease;
+  box-sizing: border-box;
 }
 
-.priority-bar-container:hover .priority-bar {
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+.priority-bar.striped {
+  /* Stripes handled via inline repeating-linear-gradient */
+}
+
+.priority-bar-container:hover .priority-bar:not(.striped) {
+  filter: brightness(1.1);
+}
+
+.priority-bar-container:hover .priority-bar.striped {
+  filter: brightness(0.95);
 }
 
 .priority-count {
-  color: #ffffff;
   font-weight: 600;
   font-size: 0.9rem;
+  color: #ffffff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
@@ -2520,7 +2528,7 @@ body {
 
 .stipend-bar {
   height: 100%;
-  background: linear-gradient(90deg, #2a2a2a 0%, #6b6b6b 100%);
+  background: linear-gradient(90deg, #2a2a2a 0%, #4a4a4a 100%);
   border-radius: 2px;
   display: flex;
   align-items: center;
@@ -2531,7 +2539,7 @@ body {
 }
 
 .stipend-bar-container:hover .stipend-bar {
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #1a1a1a 0%, #3a3a3a 100%);
 }
 
 .stipend-count {
@@ -2743,11 +2751,16 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
   cursor: grab;
+  position: relative;
+  z-index: 1;
 }
 
 .qual-card:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+}
+
+.qual-card.has-open-dropdown {
+  z-index: 9999;
 }
 
 .qual-card:active {
@@ -2886,32 +2899,13 @@ body {
   border-color: #a89f91;
 }
 
-/* Selected tags display */
-.selected-tags-display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 6px 0;
-}
-
-.selected-tag-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 2px;
-}
-
-.selected-tag-badge:hover {
-  transform: scale(1.2);
-  opacity: 0.7;
-}
-
 /* Tag dropdown container */
 .tag-dropdown-container {
   position: relative;
+}
+
+.tag-dropdown-container.is-open {
+  z-index: 99999;
 }
 
 .tag-dropdown-trigger {
@@ -2924,29 +2918,48 @@ body {
   align-items: center;
   gap: 2px;
   transition: all 0.2s ease;
-  opacity: 0.6;
 }
 
 .tag-dropdown-trigger:hover {
-  opacity: 1;
-  transform: scale(1.1);
+  opacity: 0.8;
 }
 
-.tag-dropdown-trigger.has-tags {
+.tag-icon-default {
+  opacity: 0.5;
+}
+
+.tag-dropdown-trigger:hover .tag-icon-default {
   opacity: 1;
+}
+
+.selected-tags-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid #d4d2ce;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.selected-tag-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
 }
 
 .tag-dropdown-menu {
   position: absolute;
-  bottom: 100%;
+  top: 100%;
   right: 0;
-  margin-bottom: 8px;
+  margin-top: 8px;
   background: #ffffff;
   border: 1px solid #d4d2ce;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   min-width: 240px;
-  z-index: 1000;
+  z-index: 99999;
   overflow: hidden;
 }
 
@@ -3133,29 +3146,29 @@ body {
 .issue-open2 { background: #718096; }
 
 /* Economic vs Non-Economic color schemes */
-/* Cool colors for Economic issues (blues, purples, teals) */
-.economic-color-0 { background: #667eea; } /* Blue-purple */
-.economic-color-1 { background: #4299e1; } /* Sky blue */
-.economic-color-2 { background: #38b2ac; } /* Teal */
-.economic-color-3 { background: #5a67d8; } /* Indigo */
-.economic-color-4 { background: #3182ce; } /* Blue */
-.economic-color-5 { background: #319795; } /* Teal-green */
-.economic-color-6 { background: #2c5282; } /* Dark blue */
-.economic-color-7 { background: #2d3748; } /* Navy */
-.economic-color-8 { background: #4c51bf; } /* Purple-blue */
-.economic-color-9 { background: #2b6cb0; } /* Medium blue */
+/* Economic issues - FILLED style */
+.economic-color-0 { background: #667eea; color: #ffffff; } /* Blue-purple */
+.economic-color-1 { background: #48bb78; color: #ffffff; } /* Green */
+.economic-color-2 { background: #ed8936; color: #ffffff; } /* Orange */
+.economic-color-3 { background: #f56565; color: #ffffff; } /* Red */
+.economic-color-4 { background: #9f7aea; color: #ffffff; } /* Purple */
+.economic-color-5 { background: #38b2ac; color: #ffffff; } /* Teal */
+.economic-color-6 { background: #ecc94b; color: #2a2a2a; } /* Yellow */
+.economic-color-7 { background: #ed64a6; color: #ffffff; } /* Pink */
+.economic-color-8 { background: #4299e1; color: #ffffff; } /* Sky blue */
+.economic-color-9 { background: #fc8181; color: #ffffff; } /* Light red */
 
-/* Warm colors for Non-Economic issues (reds, oranges, yellows, pinks) */
-.non-economic-color-0 { background: #f56565; } /* Red */
-.non-economic-color-1 { background: #ed8936; } /* Orange */
-.non-economic-color-2 { background: #ecc94b; } /* Yellow */
-.non-economic-color-3 { background: #fc8181; } /* Light red */
-.non-economic-color-4 { background: #f6ad55; } /* Light orange */
-.non-economic-color-5 { background: #ed64a6; } /* Pink */
-.non-economic-color-6 { background: #e53e3e; } /* Dark red */
-.non-economic-color-7 { background: #dd6b20; } /* Dark orange */
-.non-economic-color-8 { background: #d69e2e; } /* Dark yellow */
-.non-economic-color-9 { background: #d53f8c; } /* Dark pink */
+/* Non-Economic issues - STRIPED style (alternating 80% and 100% opacity, white text) */
+.non-economic-color-0 { background: repeating-linear-gradient(45deg, rgba(102,126,234,0.8), rgba(102,126,234,0.8) 4px, #667eea 4px, #667eea 8px); border: 2px solid #667eea; color: #ffffff; } /* Blue-purple */
+.non-economic-color-1 { background: repeating-linear-gradient(45deg, rgba(72,187,120,0.8), rgba(72,187,120,0.8) 4px, #48bb78 4px, #48bb78 8px); border: 2px solid #48bb78; color: #ffffff; } /* Green */
+.non-economic-color-2 { background: repeating-linear-gradient(45deg, rgba(237,137,54,0.8), rgba(237,137,54,0.8) 4px, #ed8936 4px, #ed8936 8px); border: 2px solid #ed8936; color: #ffffff; } /* Orange */
+.non-economic-color-3 { background: repeating-linear-gradient(45deg, rgba(245,101,101,0.8), rgba(245,101,101,0.8) 4px, #f56565 4px, #f56565 8px); border: 2px solid #f56565; color: #ffffff; } /* Red */
+.non-economic-color-4 { background: repeating-linear-gradient(45deg, rgba(159,122,234,0.8), rgba(159,122,234,0.8) 4px, #9f7aea 4px, #9f7aea 8px); border: 2px solid #9f7aea; color: #ffffff; } /* Purple */
+.non-economic-color-5 { background: repeating-linear-gradient(45deg, rgba(56,178,172,0.8), rgba(56,178,172,0.8) 4px, #38b2ac 4px, #38b2ac 8px); border: 2px solid #38b2ac; color: #ffffff; } /* Teal */
+.non-economic-color-6 { background: repeating-linear-gradient(45deg, rgba(214,158,46,0.8), rgba(214,158,46,0.8) 4px, #d69e2e 4px, #d69e2e 8px); border: 2px solid #d69e2e; color: #ffffff; } /* Yellow */
+.non-economic-color-7 { background: repeating-linear-gradient(45deg, rgba(237,100,166,0.8), rgba(237,100,166,0.8) 4px, #ed64a6 4px, #ed64a6 8px); border: 2px solid #ed64a6; color: #ffffff; } /* Pink */
+.non-economic-color-8 { background: repeating-linear-gradient(45deg, rgba(66,153,225,0.8), rgba(66,153,225,0.8) 4px, #4299e1 4px, #4299e1 8px); border: 2px solid #4299e1; color: #ffffff; } /* Sky blue */
+.non-economic-color-9 { background: repeating-linear-gradient(45deg, rgba(229,62,62,0.8), rgba(229,62,62,0.8) 4px, #e53e3e 4px, #e53e3e 8px); border: 2px solid #e53e3e; color: #ffffff; } /* Light red */
 
 .qual-meta {
   display: flex;

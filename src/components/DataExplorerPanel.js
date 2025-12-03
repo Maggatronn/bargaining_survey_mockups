@@ -111,6 +111,7 @@ function DataExplorerPanel({
             onCreatePointer={onCreatePointer}
             selectedRespondent={selectedRespondent}
             commentsRecords={commentsRecords}
+            questions={questions}
           />
         )}
         {activeTab === 'stipend' && (

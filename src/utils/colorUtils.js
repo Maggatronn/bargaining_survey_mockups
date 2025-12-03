@@ -1,37 +1,40 @@
 // Centralized color utility for consistent theming across the app
 
-// Cool colors for Economic issues (blues, purples, teals)
-const economicColors = [
+// Varied color palette - same colors for both, differentiated by style (filled vs outlined)
+const questionColors = [
   '#667eea', // Blue-purple
-  '#4299e1', // Sky blue
+  '#48bb78', // Green
+  '#ed8936', // Orange
+  '#f56565', // Red
+  '#9f7aea', // Purple
   '#38b2ac', // Teal
-  '#5a67d8', // Indigo
-  '#3182ce', // Blue
-  '#319795', // Teal-green
-  '#2c5282', // Dark blue
-  '#2d3748', // Navy
-  '#4c51bf', // Purple-blue
-  '#2b6cb0', // Medium blue
+  '#ecc94b', // Yellow
+  '#ed64a6', // Pink
+  '#4299e1', // Sky blue
+  '#fc8181', // Light red
+  '#718096', // Gray
+  '#4a5568', // Dark gray
 ];
 
-// Warm colors for Non-Economic issues (reds, oranges, yellows, pinks)
-const nonEconomicColors = [
-  '#f56565', // Red
-  '#ed8936', // Orange
-  '#ecc94b', // Yellow
-  '#fc8181', // Light red
-  '#f6ad55', // Light orange
-  '#ed64a6', // Pink
-  '#e53e3e', // Dark red
-  '#dd6b20', // Dark orange
-  '#d69e2e', // Dark yellow
-  '#d53f8c', // Dark pink
-];
+// Economic uses same colors (filled)
+const economicColors = questionColors;
+
+// Non-Economic uses same colors (will be outlined via CSS)
+const nonEconomicColors = questionColors;
 
 // Special colors for specific questions
 const specialColors = {
   'open1': '#9f7aea', // Purple for Equity + Inclusivity
   'open2': '#718096', // Gray for Other Priorities
+};
+
+/**
+ * Check if a question should be displayed with outlined style (non-economic)
+ * @param {string} economic - The economic classification
+ * @returns {boolean} - True if should be outlined
+ */
+export const isOutlinedStyle = (economic) => {
+  return economic === 'Non-Economic';
 };
 
 /**
